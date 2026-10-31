@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Credential = require('../models/Credential');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 const router = Router();
 const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{9,}$/;
@@ -59,6 +60,13 @@ router.post('/staff', requireAuth, requireRole('admin'), async (req, res, next) 
   } catch (error) { next(error); }
 });
 
+router.get('/staff', requireAuth, requireRole('admin'), async (_req, res, next) => {
+  try {
+    const staff = await User.find({ role: 'staff' }).select('id email role').sort({ email: 1 }).lean();
+    return res.json({ staff: staff.map(({ id, email, role }) => ({ id, email, role })) });
+  } catch (error) { next(error); }
+});
+
 router.post('/password-reset/request', async (req, res, next) => {
   try {
     const email = String(req.body.email ?? '').trim().toLowerCase();
@@ -71,14 +79,7 @@ router.post('/password-reset/request', async (req, res, next) => {
       credential.reset_token_expires_at = new Date(Date.now() + 30 * 60 * 1000);
       await credential.save();
       const resetUrl = `${process.env.APP_URL ?? 'http://localhost:5173'}/reset-password?token=${rawToken}`;
-      if (process.env.NODE_ENV === 'production') {
-        // Configure a mail provider before production use; never expose reset tokens in an API response.
-        if (!process.env.RESET_EMAIL_WEBHOOK) return res.status(503).json({ error: 'Password reset email is not configured.' });
-        const delivery = await fetch(process.env.RESET_EMAIL_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resetUrl }) });
-        if (!delivery.ok) throw new Error('Password reset email delivery failed.');
-      } else {
-        console.info(`Password reset link for ${email}: ${resetUrl}`);
-      }
+      await sendPasswordResetEmail(email, resetUrl);
     }
     return res.json({ message: 'If an account exists for that email, password reset instructions will be sent.' });
   } catch (error) { next(error); }

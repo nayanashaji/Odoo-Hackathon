@@ -1,3 +1,9 @@
+node_modules/
+dist/
+**/.pnpm-store/
+**/.env
+**/.env.*
+!**/.env.example
 # Package lockfiles
 package-lock.json
 **/package-lock.json

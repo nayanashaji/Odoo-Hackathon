@@ -1,7 +1,8 @@
 const {
     createInvoice,
     getAllInvoices,
-    getInvoiceById
+    getInvoiceById,
+    updateInvoiceStatus
 } = require("../services/invoiceService");
 
 const generateInvoice = (req, res) => {
@@ -21,7 +22,7 @@ const generateInvoice = (req, res) => {
             invoice
         });
     } catch (error) {
-        res.status(404).json({
+        res.status(error.statusCode || 400).json({
             message: error.message
         });
     }
@@ -43,8 +44,32 @@ const fetchInvoiceById = (req, res) => {
     res.status(200).json(invoice);
 };
 
+const changeInvoiceStatus = (req, res) => {
+    try {
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({
+                message: "Status is required"
+            });
+        }
+
+        const invoice = updateInvoiceStatus(req.params.id, status);
+
+        res.status(200).json({
+            message: "Invoice status updated successfully",
+            invoice
+        });
+    } catch (error) {
+        res.status(400).json({
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     generateInvoice,
     fetchAllInvoices,
-    fetchInvoiceById
+    fetchInvoiceById,
+    changeInvoiceStatus
 };

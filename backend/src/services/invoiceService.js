@@ -7,6 +7,16 @@ const createInvoice = (subscriptionId) => {
         throw new Error("Subscription not found");
     }
 
+    const existingInvoice = invoices.find(
+    invoice => invoice.subscription_id === subscriptionId
+);
+
+if (existingInvoice) {
+    const error = new Error("An invoice already exists for this subscription");
+    error.statusCode = 409;
+    throw error;
+}
+
     if (!subscription.lines || subscription.lines.length === 0) {
         throw new Error("Subscription has no product lines");
     }
@@ -47,7 +57,9 @@ const createInvoice = (subscriptionId) => {
             quantity: line.quantity,
             unit_price: line.unit_price,
             tax_amount: line.tax_amount,
-            total_amount: line.total_amount
+            total_amount: Number(
+                 (line.quantity * line.unit_price + line.tax_amount).toFixed(2)
+            )
         };
     });
 
@@ -86,8 +98,37 @@ const getAllInvoices = () => invoices;
 const getInvoiceById = (invoiceId) =>
     invoices.find(invoice => invoice.id === invoiceId);
 
+const updateInvoiceStatus = (invoiceId, newStatus) => {
+    const invoice = getInvoiceById(invoiceId);
+
+    if (!invoice) {
+        throw new Error("Invoice not found");
+    }
+
+    const allowedTransitions = {
+        Draft: ["Confirmed"],
+        Confirmed: ["Paid"],
+        Paid: []
+    };
+
+    if (!allowedTransitions[invoice.status]) {
+        throw new Error("Invalid invoice status");
+    }
+
+    if (!allowedTransitions[invoice.status].includes(newStatus)) {
+        throw new Error(
+            `Cannot change invoice status from ${invoice.status} to ${newStatus}`
+        );
+    }
+
+    invoice.status = newStatus;
+
+    return invoice;
+};
+
 module.exports = {
     createInvoice,
     getAllInvoices,
-    getInvoiceById
+    getInvoiceById,
+    updateInvoiceStatus
 };

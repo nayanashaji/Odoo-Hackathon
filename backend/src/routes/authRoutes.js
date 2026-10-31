@@ -1,13 +1,14 @@
-import { Router } from 'express';
-import bcrypt from 'bcryptjs';
-import crypto from 'node:crypto';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import Credential from '../models/Credential.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+const { Router } = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('node:crypto');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const Credential = require('../models/Credential');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = Router();
 const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{9,}$/;
+const isValidPassword = password => passwordRule.test(password) && Buffer.byteLength(password, 'utf8') <= 72;
 const safeUser = ({ id, email, role }) => ({ id, email, role });
 const issueToken = user => jwt.sign(safeUser(user), process.env.JWT_SECRET, { expiresIn: '8h' });
 
@@ -16,7 +17,7 @@ router.post('/register', async (req, res, next) => {
     const email = String(req.body.email ?? '').trim().toLowerCase();
     const password = String(req.body.password ?? '');
     if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-    if (!passwordRule.test(password)) return res.status(400).json({ error: 'Password must be longer than 8 characters and include uppercase, lowercase, and a special character.' });
+    if (!isValidPassword(password)) return res.status(400).json({ error: 'Password must be 9–72 bytes and include uppercase, lowercase, and a special character.' });
     if (await User.exists({ email })) return res.status(409).json({ error: 'An account with this email already exists.' });
 
     const user = await User.create({ id: `usr_${crypto.randomUUID()}`, email, role: 'customer' });
@@ -50,7 +51,7 @@ router.post('/staff', requireAuth, requireRole('admin'), async (req, res, next) 
     const email = String(req.body.email ?? '').trim().toLowerCase();
     const password = String(req.body.password ?? '');
     if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-    if (!passwordRule.test(password)) return res.status(400).json({ error: 'Password must be longer than 8 characters and include uppercase, lowercase, and a special character.' });
+    if (!isValidPassword(password)) return res.status(400).json({ error: 'Password must be 9–72 bytes and include uppercase, lowercase, and a special character.' });
     if (await User.exists({ email })) return res.status(409).json({ error: 'An account with this email already exists.' });
     const user = await User.create({ id: `usr_${crypto.randomUUID()}`, email, role: 'staff' });
     await Credential.create({ user_id: user.id, password_hash: await bcrypt.hash(password, 12) });
@@ -73,7 +74,8 @@ router.post('/password-reset/request', async (req, res, next) => {
       if (process.env.NODE_ENV === 'production') {
         // Configure a mail provider before production use; never expose reset tokens in an API response.
         if (!process.env.RESET_EMAIL_WEBHOOK) return res.status(503).json({ error: 'Password reset email is not configured.' });
-        await fetch(process.env.RESET_EMAIL_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resetUrl }) });
+        const delivery = await fetch(process.env.RESET_EMAIL_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, resetUrl }) });
+        if (!delivery.ok) throw new Error('Password reset email delivery failed.');
       } else {
         console.info(`Password reset link for ${email}: ${resetUrl}`);
       }
@@ -86,7 +88,7 @@ router.post('/password-reset/confirm', async (req, res, next) => {
   try {
     const rawToken = String(req.body.token ?? '');
     const password = String(req.body.password ?? '');
-    if (!passwordRule.test(password)) return res.status(400).json({ error: 'Password must be longer than 8 characters and include uppercase, lowercase, and a special character.' });
+    if (!isValidPassword(password)) return res.status(400).json({ error: 'Password must be 9–72 bytes and include uppercase, lowercase, and a special character.' });
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const credential = await Credential.findOne({ reset_token_hash: tokenHash, reset_token_expires_at: { $gt: new Date() } });
     if (!credential) return res.status(400).json({ error: 'Reset link is invalid or expired.' });
@@ -98,4 +100,4 @@ router.post('/password-reset/confirm', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-export default router;
+module.exports = router;

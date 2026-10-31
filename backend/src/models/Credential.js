@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 // Password hashes and reset tokens are kept out of the public User record.
 const credentialSchema = new mongoose.Schema({
@@ -8,4 +8,4 @@ const credentialSchema = new mongoose.Schema({
   reset_token_expires_at: { type: Date, default: null }
 }, { timestamps: true, versionKey: false });
 
-export default mongoose.model('Credential', credentialSchema);
+module.exports = mongoose.model('Credential', credentialSchema);

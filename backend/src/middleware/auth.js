@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
-export function requireAuth(req, res, next) {
+function requireAuth(req, res, next) {
   const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return res.status(401).json({ error: 'Authentication required.' });
   try {
@@ -11,7 +11,7 @@ export function requireAuth(req, res, next) {
   }
 }
 
-export function requireRole(...roles) {
+function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.auth || !roles.includes(req.auth.role)) {
       return res.status(403).json({ error: 'You do not have permission to do this.' });
@@ -19,3 +19,5 @@ export function requireRole(...roles) {
     next();
   };
 }
+
+module.exports = { requireAuth, requireRole };

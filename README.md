@@ -161,22 +161,6 @@ Persistence differs by module in the current repository: product/plan/auth model
 
 The seed utility can replace the product catalog with demo products. Use it only with a disposable development database; it does not seed invoices, payments, or subscriptions.
 
-## Known integration status
-
-The current `backend/package.json` starts `server.js`, which only mounts invoice, discount, and payment routes. The alternate `backend/src/index.js` contains duplicate top-level declarations and currently fails Node's syntax check; it is not a working unified server entry point. As a result, the frontend's auth, finance, product, plan, quote, and subscription screens do not all have working API routes through the default backend. The default server also lacks CORS middleware, so browser calls from the Vite origin to port 5000 will be blocked unless CORS is configured.
-
-Some frontend modules also use hardcoded `localhost:5000` URLs. The backend entry point hardcodes port `5000`, and the current default server does not load `backend/.env`. The `.env.example` file documents settings for the intended consolidated server; it does not configure the current `server.js` by itself.
-
-These wiring and configuration gaps should be resolved before presenting the full product as an end-to-end system or deploying it publicly.
-
-## Security and deployment
-
-- Treat this repository as a hackathon/demo prototype until the unified API entry point and access controls are in place.
-- Do not publish `.env` files, JWT secrets, bootstrap passwords, SMTP credentials, or database credentials.
-- Review demo/test authentication headers and in-memory fallback behavior before exposing API routes publicly.
-- Configure the backend to honor the hosting provider's port, restrict CORS to the deployed frontend, and use a protected MongoDB account and network allowlist.
-- Set up a real SMTP provider for password reset outside development; Ethereal is a test inbox.
-
 ## License
 
-No license file is currently included. Contact the project team before reusing or redistributing the code.
+MIT

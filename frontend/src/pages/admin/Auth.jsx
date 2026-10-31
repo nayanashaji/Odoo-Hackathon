@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{9,}$/;
+const modeForPath = path => ({ '/register': 'register', '/forgot-password': 'reset-request', '/reset-password': 'reset' }[path] ?? 'login');
+const pathForMode = mode => ({ login: '/login', register: '/register', 'reset-request': '/forgot-password', reset: '/reset-password' }[mode]);
 
 async function request(path, payload) {
   const response = await fetch(`${API}${path}`, {
@@ -12,13 +15,22 @@ async function request(path, payload) {
   return result;
 }
 
-export default function App() {
-  const [mode, setMode] = useState(location.pathname === '/reset-password' ? 'reset' : 'login');
+export default function Auth() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [mode, setMode] = useState(() => modeForPath(location.pathname));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => setMode(modeForPath(location.pathname)), [location.pathname]);
+
+  function changeMode(nextMode) {
+    setMode(nextMode); setError(''); setMessage('');
+    navigate(pathForMode(nextMode));
+  }
 
   async function submit(event) {
     event.preventDefault(); setMessage(''); setError(''); setBusy(true);
@@ -33,7 +45,8 @@ export default function App() {
         const result = await request(`/auth/${mode}`, { email, password });
         localStorage.setItem('brightloop_token', result.token);
         localStorage.setItem('brightloop_user', JSON.stringify(result.user));
-        setMessage(`Signed in as ${result.user.role}.`);
+        if (['admin', 'staff'].includes(result.user.role)) navigate('/finance', { replace: true });
+        else setMessage('Your account is ready. Finance workspace access is for staff accounts.');
       }
     } catch (reason) { setError(reason.message); }
     finally { setBusy(false); }
@@ -46,11 +59,11 @@ export default function App() {
       <form onSubmit={submit}>
         {mode !== 'reset' && <label>Email address<input type="email" autoComplete="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} required /></label>}
         {(mode === 'login' || mode === 'register' || mode === 'reset') && <label>{mode === 'reset' ? 'New password' : 'Password'}<input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 9 characters" value={password} onChange={e => setPassword(e.target.value)} required minLength="9" />{mode !== 'login' && <small>Include uppercase, lowercase, and a special character.</small>}</label>}
-        {mode === 'login' && <button className="text-button forgot" type="button" onClick={() => { setMode('reset-request'); setError(''); setMessage(''); }}>Forgot password?</button>}
+        {mode === 'login' && <button className="text-button forgot" type="button" onClick={() => changeMode('reset-request')}>Forgot password?</button>}
         {error && <div className="notice error" role="alert">{error}</div>}{message && <div className="notice success" role="status">{message}</div>}
         <button className="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : mode === 'reset-request' ? 'Send reset link' : 'Update password'}<span>→</span></button>
       </form>
-      <div className="switch-mode">{mode === 'login' ? <>New to Brightloop? <button className="text-button" onClick={() => { setMode('register'); setError(''); setMessage(''); }}>Create an account</button></> : mode === 'register' ? <>Already have an account? <button className="text-button" onClick={() => { setMode('login'); setError(''); setMessage(''); }}>Sign in</button></> : <button className="text-button" onClick={() => { setMode('login'); setError(''); setMessage(''); }}>← Back to sign in</button>}</div>
+      <div className="switch-mode">{mode === 'login' ? <>New to Brightloop? <button className="text-button" type="button" onClick={() => changeMode('register')}>Create an account</button></> : mode === 'register' ? <>Already have an account? <button className="text-button" type="button" onClick={() => changeMode('login')}>Sign in</button></> : <button className="text-button" type="button" onClick={() => changeMode('login')}>← Back to sign in</button>}</div>
       <footer>© 2026 Brightloop Software <span>Secure account access</span></footer>
     </div></section>
   </main>;

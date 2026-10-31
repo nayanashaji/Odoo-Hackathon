@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import './financeDashboard.css';
+import { Navigate, useNavigate } from 'react-router-dom';
+import './dashboard.css';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 const money = amount => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount ?? 0);
@@ -19,7 +20,8 @@ function RevenueChart({ rows }) {
   </div>;
 }
 
-export default function FinanceDashboard() {
+export default function Dashboard() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState('month');
   const [data, setData] = useState(null);
   const [state, setState] = useState('loading');
@@ -39,8 +41,8 @@ export default function FinanceDashboard() {
     return () => { active = false; };
   }, [period, refresh]);
 
-  function signOut() { localStorage.removeItem('brightloop_token'); localStorage.removeItem('brightloop_user'); setUser(null); setState('signed-out'); }
-  if (state === 'signed-out') return <main className="finance-gate"><div className="finance-gate-card"><span className="finance-logo-icon">b</span><p className="finance-eyebrow">BRIGHTLOOP FINANCE</p><h1>Sign in to view your dashboard</h1><p>Finance summaries are available to admin and staff accounts.</p><a href="/auth.html">Go to sign in <span>→</span></a></div></main>;
+  function signOut() { localStorage.removeItem('brightloop_token'); localStorage.removeItem('brightloop_user'); setUser(null); navigate('/login'); }
+  if (state === 'signed-out') return <Navigate to="/login" replace />;
 
   const metrics = data?.metrics;
   return <div className="finance-app-shell">

@@ -2,6 +2,7 @@ require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
 const mongoose = require('mongoose');
+const productRoutes = require('./routes/productRoutes');
 const authController = require('./controllers/authController');
 const financeController = require('./controllers/financeController');
 
@@ -11,6 +12,8 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '20kb' }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({ status: 'online', timestamp: new Date().toISOString(), service: 'Brightloop Subscription & Catalog Engine' }));
+app.use('/api/products', productRoutes);
 app.use('/api/auth', authController);
 app.use('/api/finance', financeController);
 app.use((error, _req, res, _next) => {

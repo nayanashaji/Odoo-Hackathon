@@ -25,7 +25,7 @@ function overduePipeline(now, tail = []) {
   return [
     { $addFields: { __dueDate: asDate('$due_date') } },
     { $match: {
-      status: { $nin: ['Paid', 'paid', 'Cancelled', 'Canceled', 'cancelled', 'canceled'] },
+      status: { $nin: ['Draft', 'draft', 'Paid', 'paid', 'Cancelled', 'Canceled', 'cancelled', 'canceled'] },
       __dueDate: { $lt: now }
     } },
     ...tail
@@ -48,7 +48,7 @@ router.get('/summary', requireFinanceAccess, async (req, res, next) => {
         { $group: { _id: null, total: { $sum: '$grand_total' } } }
       ]).toArray(),
       invoices.aggregate([
-        { $match: { status: { $nin: ['Paid', 'paid', 'Cancelled', 'Canceled', 'cancelled', 'canceled'] } } },
+        { $match: { status: { $nin: ['Draft', 'draft', 'Paid', 'paid', 'Cancelled', 'Canceled', 'cancelled', 'canceled'] } } },
         { $group: { _id: null, total: { $sum: '$grand_total' }, count: { $sum: 1 } } }
       ]).toArray(),
       invoices.aggregate(overduePipeline(now, [{ $count: 'count' }])).toArray(),

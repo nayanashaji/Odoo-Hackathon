@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Auth from './pages/admin/Auth.jsx';
 import Dashboard from './pages/finance/Dashboard.jsx';
+import ProductCatalog from './pages/admin/ProductCatalog.jsx';
 import './pages/admin/auth.css';
 import './pages/finance/dashboard.css';
 
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/forgot-password" element={<Auth />} />
       <Route path="/reset-password" element={<Auth />} />
       <Route path="/finance" element={<FinanceRoute />} />
+      <Route path="/products" element={<ProductCatalog />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   </BrowserRouter>;

@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Auth from './pages/admin/Auth.jsx';
 import Dashboard from './pages/finance/Dashboard.jsx';

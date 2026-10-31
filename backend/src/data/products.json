@@ -38,6 +38,11 @@
         "sku": "SRV-SMC-1029",
         "in_stock": true
       }
+    ],
+    "plans": [
+      "plan_1",
+      "plan_2",
+      "plan_1793428445484"
     ]
   },
   {
@@ -71,7 +76,7 @@
       },
       {
         "id": "var_6",
-        "name": "Brand: Ubiquiti UniFi Dream Machine Pro",
+        "name": "Brand: Ubiquiti UniFi Pro",
         "attribute": "brand",
         "value": "Ubiquiti",
         "price_modifier": 120,
@@ -79,6 +84,11 @@
         "sku": "NET-UBNT-UDM",
         "in_stock": true
       }
+    ],
+    "plans": [
+      "plan_3",
+      "plan_4",
+      "plan_1793432577430"
     ]
   },
   {
@@ -120,12 +130,13 @@
         "sku": "POS-SNM-T2S",
         "in_stock": true
       }
-    ]
+    ],
+    "plans": []
   },
   {
     "id": "prod_4",
     "name": "Odoo Enterprise Suite SaaS License",
-    "description": "Comprehensive ERP cloud software package: CRM, Subscriptions, Sales, Invoicing, and Auto-Accounting.",
+    "description": "Integrated ERP cloud package: CRM, Subscriptions, Sales, Invoicing, and Auto-Accounting.",
     "category": "Software & SaaS",
     "sales_price": 650,
     "cost_price": 60,
@@ -151,7 +162,8 @@
         "sku": "SAS-GOLD-PRI",
         "in_stock": true
       }
-    ]
+    ],
+    "plans": []
   },
   {
     "id": "prod_5",
@@ -182,6 +194,7 @@
         "sku": "AI-INTL-VPU",
         "in_stock": true
       }
-    ]
+    ],
+    "plans": []
   }
 ]

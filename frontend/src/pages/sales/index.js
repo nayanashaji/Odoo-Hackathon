@@ -13,3 +13,6 @@ export { default as SubscriptionTransitionTimeline } from './SubscriptionTransit
 export * from './mockSubscriptionData';
 
 export { default } from './SubscriptionManager';
+import QuoteTemplateManager from './QuoteTemplateManager';
+
+export default QuoteTemplateManager;

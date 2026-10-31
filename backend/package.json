@@ -2,6 +2,7 @@
   "name": "brightloop-backend",
   "version": "1.0.0",
   "private": true,
+  "description": "Brightloop Subscription System Backend - Odoo x Make-A-Ton 2026",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -16,11 +17,11 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.0",
-    "nodemailer": "^10.3.1"
+    "nodemailer": "^6.9.15"
   },
   "devDependencies": {
     "jest": "^25.1.0",
-    "nodemon": "^1.0.2",
+    "nodemon": "^3.1.0",
     "supertest": "^7.0.0"
   }
 }

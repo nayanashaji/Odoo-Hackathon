@@ -1,13 +1,14 @@
 # Dependencies
 node_modules/
 **/node_modules/
+**/.pnpm-store/
 
 # Build outputs & caches
-.next/
-**/.next/
 dist/
 build/
 out/
+.next/
+**/.next/
 
 # Lock files
 package-lock.json
@@ -15,8 +16,22 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
-# System & logs
+# Environment variables
+.env
+**/.env
+**/.env.*
+.env*.local
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & Misc
 .DS_Store
 Thumbs.db
-*.log
-
+AGENTS.md
+**/AGENTS.md

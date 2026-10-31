@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './financeDashboard.css';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
 const money = amount => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount ?? 0);
 
 function RevenueChart({ rows }) {
@@ -40,7 +40,7 @@ export default function FinanceDashboard() {
   }, [period, refresh]);
 
   function signOut() { localStorage.removeItem('brightloop_token'); localStorage.removeItem('brightloop_user'); setUser(null); setState('signed-out'); }
-  if (state === 'signed-out') return <main className="finance-gate"><div className="finance-gate-card"><span className="finance-logo-icon">b</span><p className="finance-eyebrow">BRIGHTLOOP FINANCE</p><h1>Sign in to view your dashboard</h1><p>Finance summaries are available to admin and staff accounts.</p><a href="/">Go to sign in <span>→</span></a></div></main>;
+  if (state === 'signed-out') return <main className="finance-gate"><div className="finance-gate-card"><span className="finance-logo-icon">b</span><p className="finance-eyebrow">BRIGHTLOOP FINANCE</p><h1>Sign in to view your dashboard</h1><p>Finance summaries are available to admin and staff accounts.</p><a href="/auth.html">Go to sign in <span>→</span></a></div></main>;
 
   const metrics = data?.metrics;
   return <div className="finance-app-shell">

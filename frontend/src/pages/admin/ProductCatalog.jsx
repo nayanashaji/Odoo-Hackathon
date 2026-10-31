@@ -1,21 +1,179 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './ProductCatalog.css';
-import { INITIAL_PRODUCTS } from '../../data/initialData';
+
+// Initial seed conforming to docs/schema.json contract
+const INITIAL_PRODUCTS = [
+  {
+    id: 'prod_1',
+    name: 'Enterprise Dedicated Cloud Server',
+    description: 'High-availability dedicated compute server with ECC memory, NVMe arrays, and hardware RAID.',
+    category: 'Infrastructure',
+    sales_price: 1200,
+    cost_price: 200,
+    status: 'active',
+    variants: [
+      {
+        id: 'var_1',
+        name: 'Brand: Dell PowerEdge R750',
+        attribute: 'brand',
+        value: 'Dell',
+        price_modifier: 560, // docs/schema.json: { id: "var_1", price_modifier: 560 }
+        cost_modifier: 90,
+        sku: 'SRV-DELL-R750'
+      },
+      {
+        id: 'var_2',
+        name: 'Brand: HPE ProLiant DL380 Gen10',
+        attribute: 'brand',
+        value: 'HPE',
+        price_modifier: 620,
+        cost_modifier: 110,
+        sku: 'SRV-HPE-DL380'
+      },
+      {
+        id: 'var_3',
+        name: 'Brand: Supermicro Hyper Ultra',
+        attribute: 'brand',
+        value: 'Supermicro',
+        price_modifier: 380,
+        cost_modifier: 60,
+        sku: 'SRV-SMC-1029'
+      }
+    ]
+  },
+  {
+    id: 'prod_2',
+    name: 'Carrier-Grade 10G Security Gateway',
+    description: 'Hardware firewall and SD-WAN gateway capable of 10 Gbps multi-threat inspection throughput.',
+    category: 'Networking',
+    sales_price: 450,
+    cost_price: 120,
+    status: 'active',
+    variants: [
+      {
+        id: 'var_4',
+        name: 'Brand: Cisco Catalyst Edge',
+        attribute: 'brand',
+        value: 'Cisco',
+        price_modifier: 280,
+        cost_modifier: 50,
+        sku: 'NET-CSCO-8300'
+      },
+      {
+        id: 'var_5',
+        name: 'Brand: Juniper Networks SRX345',
+        attribute: 'brand',
+        value: 'Juniper',
+        price_modifier: 240,
+        cost_modifier: 45,
+        sku: 'NET-JNPR-345'
+      },
+      {
+        id: 'var_6',
+        name: 'Brand: Ubiquiti UniFi Pro',
+        attribute: 'brand',
+        value: 'Ubiquiti',
+        price_modifier: 120,
+        cost_modifier: 25,
+        sku: 'NET-UBNT-UDM'
+      }
+    ]
+  },
+  {
+    id: 'prod_3',
+    name: 'Smart Retail Touch POS Terminal',
+    description: 'Compact high-speed Point of Sale terminal with integrated scanner and thermal printer.',
+    category: 'Hardware',
+    sales_price: 850,
+    cost_price: 300,
+    status: 'active',
+    variants: [
+      {
+        id: 'var_7',
+        name: 'Brand: Elo Touch Solutions I-Series',
+        attribute: 'brand',
+        value: 'Elo',
+        price_modifier: 220,
+        cost_modifier: 40,
+        sku: 'POS-ELO-I15'
+      },
+      {
+        id: 'var_8',
+        name: 'Brand: HP Engage One Pro',
+        attribute: 'brand',
+        value: 'HP',
+        price_modifier: 310,
+        cost_modifier: 55,
+        sku: 'POS-HP-E1'
+      }
+    ]
+  },
+  {
+    id: 'prod_4',
+    name: 'Odoo Enterprise Suite SaaS License',
+    description: 'ERP cloud software package: CRM, Subscriptions, Sales, Invoicing, and Auto-Accounting.',
+    category: 'Software & SaaS',
+    sales_price: 650,
+    cost_price: 60,
+    status: 'active',
+    variants: [
+      {
+        id: 'var_10',
+        name: 'Tier: Enterprise Platinum SLA',
+        attribute: 'tier',
+        value: 'Platinum',
+        price_modifier: 450,
+        cost_modifier: 30,
+        sku: 'SAS-PLAT-247'
+      },
+      {
+        id: 'var_11',
+        name: 'Tier: Gold Priority Support',
+        attribute: 'tier',
+        value: 'Gold',
+        price_modifier: 250,
+        cost_modifier: 15,
+        sku: 'SAS-GOLD-PRI'
+      }
+    ]
+  },
+  {
+    id: 'prod_5',
+    name: 'Industrial Edge AI Accelerator Box',
+    description: 'Rugged fanless embedded AI box for real-time video telemetry and defect detection.',
+    category: 'AI Hardware',
+    sales_price: 2100,
+    cost_price: 750,
+    status: 'active',
+    variants: [
+      {
+        id: 'var_12',
+        name: 'Brand: NVIDIA Jetson AGX Orin 64GB',
+        attribute: 'brand',
+        value: 'NVIDIA',
+        price_modifier: 890,
+        cost_modifier: 140,
+        sku: 'AI-NVDA-AGX64'
+      },
+      {
+        id: 'var_13',
+        name: 'Brand: Intel Xeon Edge VPU',
+        attribute: 'brand',
+        value: 'Intel',
+        price_modifier: 480,
+        cost_modifier: 80,
+        sku: 'AI-INTL-VPU'
+      }
+    ]
+  }
+];
 
 const API_BASE_URL = 'http://localhost:5000/api/products';
 
-export default function ProductCatalog({
-  products = [],
-  apiConnected = false,
-  loading = false,
-  onCreateProduct,
-  onAddVariant,
-  onDeleteVariant,
-  onDeleteProduct,
-  onResetSeed,
-  notification: externalNotification,
-  showNotification: externalShowNotification
-}) {
+export default function ProductCatalog() {
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [loading, setLoading] = useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activeVariants, setActiveVariants] = useState({}); // { [productId]: variantId }
@@ -51,19 +209,36 @@ export default function ProductCatalog({
     sku: ''
   });
 
-  const [localNotification, setLocalNotification] = useState(null);
+  const [notification, setNotification] = useState(null);
 
   const showNotification = (msg, type = 'success') => {
-    if (externalShowNotification) {
-      externalShowNotification(msg, type);
-    } else {
-      setLocalNotification({ msg, type });
-      setTimeout(() => setLocalNotification(null), 4000);
-    }
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 4000);
   };
 
-  const notification = externalNotification || localNotification;
-
+  // Try fetching products from backend on mount
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(API_BASE_URL, { signal: AbortSignal.timeout(2000) });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) {
+            setProducts(json.data);
+            setApiConnected(true);
+            showNotification('Connected to Backend API & catalog loaded!', 'success');
+          }
+        }
+      } catch (err) {
+        // Backend not running, use local state seamlessly
+        setApiConnected(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCatalog();
+  }, []);
 
   // Initialize active variant selections
   useEffect(() => {
@@ -168,19 +343,25 @@ export default function ProductCatalog({
       status: 'active'
     };
 
-    if (onCreateProduct) {
-      await onCreateProduct(productPayload);
-    } else {
-      // Direct HTTP POST request without any if (apiConnected) condition
+    // Attempt API save if online
+    if (apiConnected) {
       try {
-        await fetch(API_BASE_URL, {
+        const res = await fetch(API_BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productPayload)
         });
+        if (res.ok) {
+          const result = await res.json();
+          setProducts((prev) => [result.data, ...prev]);
+        } else {
+          setProducts((prev) => [productPayload, ...prev]);
+        }
       } catch (err) {
-        console.warn('Network error creating product (fallback active):', err);
+        setProducts((prev) => [productPayload, ...prev]);
       }
+    } else {
+      setProducts((prev) => [productPayload, ...prev]);
     }
 
     if (productPayload.variants.length > 0) {
@@ -190,6 +371,7 @@ export default function ProductCatalog({
       }));
     }
 
+    showNotification(`Product "${productPayload.name}" successfully created!`);
     setIsCreateModalOpen(false);
     setNewProduct({
       id: '',
@@ -236,10 +418,8 @@ export default function ProductCatalog({
       sku: quickVariant.sku || `${targetProduct.id}-${quickVariant.value.toUpperCase()}`
     };
 
-    if (onAddVariant) {
-      await onAddVariant(targetProduct.id, newVar);
-    } else {
-      // Direct HTTP POST request without any if (apiConnected) condition
+    // Attempt API call if connected
+    if (apiConnected) {
       try {
         await fetch(`${API_BASE_URL}/${targetProduct.id}/variants`, {
           method: 'POST',
@@ -247,9 +427,22 @@ export default function ProductCatalog({
           body: JSON.stringify(newVar)
         });
       } catch (err) {
-        console.warn('Network error adding variant (fallback active):', err);
+        console.warn('API error, falling back to local state:', err);
       }
     }
+
+    // Update state
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === targetProduct.id) {
+          return {
+            ...p,
+            variants: [...(p.variants || []), newVar]
+          };
+        }
+        return p;
+      })
+    );
 
     // Auto-select the newly added variant to showcase live calculation
     setActiveVariants((prev) => ({
@@ -257,6 +450,9 @@ export default function ProductCatalog({
       [targetProduct.id]: variantId
     }));
 
+    showNotification(
+      `Added variant "${newVar.name}" with dynamic price modifier +$${modifier}!`
+    );
     setIsAddVariantModalOpen(false);
   };
 
@@ -265,18 +461,25 @@ export default function ProductCatalog({
     e.stopPropagation();
     if (!window.confirm('Delete this variant?')) return;
 
-    if (onDeleteVariant) {
-      await onDeleteVariant(productId, variantId);
-    } else {
-      // Direct HTTP DELETE request without any if (apiConnected) condition
+    if (apiConnected) {
       try {
         await fetch(`${API_BASE_URL}/${productId}/variants/${variantId}`, {
           method: 'DELETE'
         });
       } catch (err) {
-        console.warn('Network error deleting variant (fallback active):', err);
+        console.warn('API delete error, updating state locally:', err);
       }
     }
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          const updatedVars = (p.variants || []).filter((v) => v.id !== variantId);
+          return { ...p, variants: updatedVars };
+        }
+        return p;
+      })
+    );
 
     // Adjust active variant selection if current was deleted
     if (activeVariants[productId] === variantId) {
@@ -289,19 +492,20 @@ export default function ProductCatalog({
     }
   };
 
+  // Delete Product
   const handleDeleteProduct = async (productId) => {
     if (!window.confirm(`Are you sure you want to delete product ${productId}?`)) return;
 
-    if (onDeleteProduct) {
-      await onDeleteProduct(productId);
-    } else {
-      // Direct HTTP DELETE request without any if (apiConnected) condition
+    if (apiConnected) {
       try {
         await fetch(`${API_BASE_URL}/${productId}`, { method: 'DELETE' });
       } catch (err) {
-        console.warn('Network error deleting product (fallback active):', err);
+        console.warn('API delete error:', err);
       }
     }
+
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    showNotification(`Product ${productId} deleted successfully.`, 'info');
   };
 
   return (
@@ -331,7 +535,7 @@ export default function ProductCatalog({
         <div className="header-actions">
           <button
             className="btn-secondary"
-            onClick={() => onResetSeed ? onResetSeed() : null}
+            onClick={() => setProducts(INITIAL_PRODUCTS)}
             title="Reload initial dummy products"
           >
             🔄 Reset Demo Seed
@@ -515,26 +719,6 @@ export default function ProductCatalog({
                   <span className="margin-pill">Margin: ${profit} ({profitPercentage}%)</span>
                 </div>
               </div>
-
-              {/* Associated Plans (Populated from GET /api/products) */}
-              {product.plans && product.plans.length > 0 && (
-                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>
-                    Linked Subscription Plans ({product.plans.length}):
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {product.plans.map((pl) => {
-                      const planName = typeof pl === 'object' ? pl.name : pl;
-                      const planFreq = typeof pl === 'object' ? pl.billing_frequency : '';
-                      return (
-                        <span key={typeof pl === 'object' ? pl.id : pl} style={{ fontSize: '0.75rem', background: 'rgba(6,182,212,0.15)', color: '#22d3ee', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 500 }}>
-                          {planName} {planFreq && <span style={{ opacity: 0.8 }}>({planFreq})</span>}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}

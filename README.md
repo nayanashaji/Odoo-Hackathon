@@ -1,179 +1,182 @@
 # Brightloop Subscription Management System
 
-Brightloop is a web application prototype for managing the recurring-revenue workflow of a subscription business. The project is being developed for the Odoo x Make-A-Ton 9.0 Kochi Hackathon 2026. Its domain covers customers and staff, products and variants, plans, discounts, subscriptions, invoices, payments, and finance reporting.
+Brightloop is a subscription-management prototype developed for the Odoo x Make-A-Ton 9.0 Kochi Hackathon 2026. It models the recurring-revenue workflow from product and plan selection through subscription lifecycle, invoicing, discounts, payments, and finance reporting.
 
-The repository combines a React single-page frontend with a Node.js/Express API and MongoDB. The shared data contract is documented in [`docs/schema.json`](docs/schema.json).
+The project uses a React single-page frontend, Node.js/Express backend modules, and MongoDB models. Some modules currently use in-memory or example data. See [the schema contract](docs/schema.json) for the repository's shared entity examples.
 
 ## Team
 
 All team members are from **Government Engineering College Thrissur**.
 
-| Name | Team role |
+| Name | Role |
 | --- | --- |
 | Nayana Shaji Mekkunnel | Team leader |
 | Jany Sabarinath | Team member |
 | Joseph John Paul | Team member |
 | Mridul Joy | Team member |
 
-## Features in the current application
+## Product capabilities represented in the repository
 
-- Customer registration and sign-in, with hashed credentials and signed JWT sessions.
-- Password-reset request and confirmation flow. In development, reset messages use an Ethereal test inbox; SMTP can be configured for a real mail service.
-- Admin-only creation and listing of staff accounts.
-- Role-protected finance summary for admin and staff users, including active subscriptions, collected revenue, outstanding invoices, overdue invoice count/list, and recent monthly collections.
-- Product catalog API with CRUD operations, product variants, and variant-price calculation.
-- React Router navigation for authentication, the finance dashboard, staff management, and product catalog.
-- Sample product data seeding through `seed.js`.
+- **Accounts and roles:** customer registration and login flows, admin/staff roles, and admin staff-management UI/API modules.
+- **Product catalog:** product and variant records, price modifiers, and price calculation.
+- **Plans:** billing frequency, minimum quantity, availability dates, and subscription closing behavior.
+- **Quotation templates:** validity periods, preview, duplication, and quote-generation modules.
+- **Subscription lifecycle:** Draft → Quotation → Confirmed → Active → Closed, with transition validation.
+- **Billing:** invoice totals, tax and due-date calculations, discount rules, invoice status, and payment records.
+- **Customer and finance views:** customer portal UI and a finance dashboard with revenue, outstanding balance, and overdue invoice summaries.
+- **Password recovery:** reset-token and mailer modules, with Ethereal intended for development and SMTP settings for external mail.
+
+These capabilities are represented by code and screens, but the current default server does not connect all of them. See [Known integration status](#known-integration-status) before trying to demo or deploy the full workflow.
 
 ## Technology
 
-- **Frontend:** React 18, React Router, Vite
-- **Backend:** Node.js, Express, Mongoose, JWT, bcryptjs, Nodemailer
-- **Database:** MongoDB
+- React 18, React Router, and Vite
+- Node.js and Express
+- MongoDB and Mongoose models
+- JWT sessions and bcrypt password hashing
+- Jest and Supertest for backend tests
 
-## Repository layout
+## Repository map
 
 ```text
 backend/
+  server.js                   Current `npm start` entry point
   src/
-    controllers/   Authentication, finance, products, quote templates
-    middleware/    Authentication and role checks
-    models/        User, credentials, products, quote templates
-    routes/        Product and quote-template route definitions
-    services/      Password-reset email delivery
-    index.js       Main Express API server
-  .env.example     Backend configuration template
+    controllers/              Auth, finance, invoices, discounts, plans,
+                               products, quotes, payments, subscriptions
+    middleware/               Authentication and access checks
+    models/                   MongoDB entity models
+    routes/                   Express route modules
+    services/                 Billing and email services
+  tests/                      Jest suites and standalone verification scripts
+  .env.example                Intended backend environment template
 frontend/
   src/
-    App.jsx        Application routes and protected views
-    pages/         Auth, finance, product, admin, sales and plan UI code
+    App.jsx                   React Router and role-based page wrappers
+    components/               Shared application layout and tables
+    pages/                    Auth, customer, finance, admin, sales views
 docs/
-  schema.json      Shared example data contract
-seed.js            Sample product catalog data
+  schema.json                 Shared entity examples
+seed.js                       Sample product catalog seed utility
 ```
 
-## Requirements
+## Prerequisites
 
-Install the following before running the application:
+- Node.js 18 or newer and npm
+- MongoDB Community Server or a MongoDB Atlas database for database-backed modules
 
-- Node.js 18 or newer, with npm
-- MongoDB Community Server, running locally, or a reachable MongoDB connection string
+## Install and run the current entry points
 
-## Run locally
+From the repository root, use two terminals.
 
-Open two PowerShell terminals from the repository directory.
-
-### 1. Configure the backend
+### Backend
 
 ```powershell
 cd backend
-npm install
-Copy-Item .env.example .env
+npm ci
+npm start
 ```
 
-Edit `backend/.env` and set at least:
+The current `npm start` command launches `backend/server.js` on port `5000`. Its root endpoint is `http://localhost:5000/`.
 
-```dotenv
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/brightloop_odoo
-JWT_SECRET=replace-with-a-long-random-secret
-APP_URL=http://localhost:5173
-BOOTSTRAP_ADMIN_EMAIL=admin@example.com
-BOOTSTRAP_ADMIN_PASSWORD=Choose-A-Strong-Password!
-```
-
-Use a private password of 9–72 bytes containing uppercase, lowercase, and a special character. Keep `.env` local; it is ignored by Git. When the API connects to MongoDB, it creates the bootstrap admin only if that email does not already exist. The password is stored as a hash.
-
-Start the API:
-
-```powershell
-npm run dev
-```
-
-The API listens on `http://localhost:5000`. Check `http://localhost:5000/api/health` for a health response.
-
-### 2. Start the frontend
-
-In a second terminal, from the repository directory:
+### Frontend
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
+Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
 
-The frontend defaults to `http://localhost:5000/api` for API requests. To use a different API URL, create `frontend/.env.local` with:
+The frontend uses `/api` modules and several pages currently default to `http://localhost:5000`. Some pages use `VITE_API_URL`; others have a hardcoded local API URL. The latter will need a configuration update for a deployed backend.
 
-```dotenv
-VITE_API_URL=http://localhost:5000/api
-```
+## Application routes
 
-Restart Vite after changing frontend environment variables.
+The current React Router defines these paths:
 
-### 3. Sign in and explore
+| Path | View |
+| --- | --- |
+| `/login` | Sign in |
+| `/register` | Create a customer account |
+| `/forgot-password` | Request a password reset |
+| `/reset-password` | Set a new password using a reset token |
+| `/portal` | Customer portal |
+| `/finance` | Finance dashboard for staff/admin |
+| `/subscriptions` | Subscription lifecycle management |
+| `/products` | Product catalog |
+| `/plans` | Plan management |
+| `/quotes` and `/quotations` | Quotation templates |
+| `/admin/users` | Staff management for admins |
 
-- `/login` — sign in
-- `/register` — create a customer account
-- `/forgot-password` — request a password reset
-- `/finance` — finance workspace for admin/staff accounts
-- `/admin/users` — admin-only staff management
-- `/products` — product catalog
+The React role wrappers are for navigation and user experience. Backend endpoints must also enforce authorization before the system is exposed beyond a local demo.
 
-Use the admin email and password configured in `backend/.env`. Registration creates a customer account; customers cannot access the finance workspace. An admin can create staff accounts from **User Management**.
+## API routes available from the current default server
 
-### Optional: seed sample products
+`backend/server.js` currently mounts these route modules on port 5000:
 
-With MongoDB running, from `backend/` run:
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/` | Backend status message |
+| `GET` | `/api/invoices` | List invoices |
+| `POST` | `/api/invoices/generate` | Generate an invoice |
+| `GET` | `/api/invoices/:id` | Get an invoice |
+| `PATCH` | `/api/invoices/:id/status` | Change invoice status |
+| `GET`, `POST` | `/api/discounts` | List or add discounts |
+| `GET`, `PUT`, `DELETE` | `/api/discounts/:id` | Read, edit, or remove a discount |
+| `POST` | `/api/discounts/:id/apply` | Apply a discount |
+| `GET`, `POST` | `/api/payments` | List or record payments |
+| `GET` | `/api/payments/:id` | Get a payment |
+| `GET` | `/api/payments/invoice/:invoiceId` | List payments for an invoice |
+
+Product, plan, quote, subscription, auth, finance, and internal-catalog route modules also exist in `backend/src`, but they are **not mounted by the current `npm start` entry point**.
+
+## Backend tests
+
+From `backend/`:
 
 ```powershell
-npm run seed
+npm test
 ```
 
-This replaces the product catalog with the five sample products (and also writes the offline JSON snapshot). It does not provision invoice, payment, subscription, or finance sample records.
+The Jest configuration currently runs the invoice-finance-math, subscription-state, and customer-invoice-access suites. Two older verification scripts are excluded from Jest and can be run directly:
 
-## API overview
+```powershell
+node tests/invoiceDiscountRules.test.js
+node tests/subscriptionStateMachineAndQuoteTemplate.test.js
+```
 
-All routes below are served by the main Node server on port 5000.
+Build the frontend with:
 
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/api/health` | Public | API health check |
-| `POST` | `/api/auth/register` | Public | Register a customer |
-| `POST` | `/api/auth/login` | Public | Sign in and receive a JWT |
-| `GET` | `/api/auth/me` | Signed in | Get the current account |
-| `POST` | `/api/auth/staff` | Admin | Create a staff account |
-| `GET` | `/api/auth/staff` | Admin | List staff accounts |
-| `POST` | `/api/auth/password-reset/request` | Public | Request a reset link |
-| `POST` | `/api/auth/password-reset/confirm` | Public, reset token required | Set a new password |
-| `GET` | `/api/finance/summary?period=month` | Admin or staff | Finance metrics; `period` accepts `month`, `year`, or `all` |
-| `GET` | `/api/products` | Public | List products |
-| `POST` | `/api/products` | Public in current API | Create a product |
-| `GET` | `/api/products/:id` | Public | Read a product |
-| `PUT` | `/api/products/:id` | Public in current API | Update a product |
-| `DELETE` | `/api/products/:id` | Public in current API | Delete a product |
-| `POST` | `/api/products/:id/variants` | Public in current API | Add a product variant |
-| `DELETE` | `/api/products/:id/variants/:variantId` | Public in current API | Remove a product variant |
-| `GET` | `/api/products/:id/calculate-price?variantId=var_1` | Public | Calculate base plus variant price |
+```powershell
+cd frontend
+npm run build
+```
 
-For protected API calls, pass the token in `Authorization: Bearer <token>`. Product endpoints currently do not enforce authentication or roles.
+## Data and persistence notes
 
-## Data model notes
+The example contract includes `User`, `Product`, `Plan`, `Discount`, `Subscription`, `Invoice`, and `Payment`. Invoices use `due_date` and payments use `payment_date` for overdue and revenue-period calculations.
 
-The shared schema includes `User`, `Product` (with `variants`), `Plan`, `Discount`, `Subscription` (with `lines`), `Invoice`, and `Payment`. Finance reporting reads invoice, payment, and subscription data from MongoDB collections. Invoices use `due_date` for overdue calculations, and payments use `payment_date` for revenue-by-period calculations. See [`docs/schema.json`](docs/schema.json) for the repository’s current example contract.
+Persistence differs by module in the current repository: product/plan/auth models use Mongoose code, while invoice, discount, payment, and subscription workflows also use in-memory mock stores. The customer portal includes sample records. Do not assume all screens share a single persisted database state.
 
-## Current implementation boundaries
+The seed utility can replace the product catalog with demo products. Use it only with a disposable development database; it does not seed invoices, payments, or subscriptions.
 
-Some plan-management and quote-template UI/API work is present in the repository, but the main frontend router and `backend/src/index.js` currently expose only the routes listed above. The main server does not currently mount the quote-template route module, and the plan and quote pages are not reachable through the default React Router. Finance summaries also require subscription, invoice, and payment documents to have been inserted into MongoDB; the included seed script only seeds products.
+## Known integration status
 
-## Security and deployment notes
+The current `backend/package.json` starts `server.js`, which only mounts invoice, discount, and payment routes. The alternate `backend/src/index.js` contains duplicate top-level declarations and currently fails Node's syntax check; it is not a working unified server entry point. As a result, the frontend's auth, finance, product, plan, quote, and subscription screens do not all have working API routes through the default backend. The default server also lacks CORS middleware, so browser calls from the Vite origin to port 5000 will be blocked unless CORS is configured.
 
-- Never commit `.env`, real SMTP credentials, JWT secrets, or production passwords.
-- Configure an SMTP provider before using password-reset email outside development. The Ethereal fallback is a test inbox and does not deliver to a user's real mailbox.
-- The current product API is open; add authentication and authorization before exposing it outside a local/demo environment.
-- Set `NODE_ENV=production` and provide production-grade secrets, database access controls, and SMTP settings for deployment.
+Some frontend modules also use hardcoded `localhost:5000` URLs. The backend entry point hardcodes port `5000`, and the current default server does not load `backend/.env`. The `.env.example` file documents settings for the intended consolidated server; it does not configure the current `server.js` by itself.
 
-## Project status
+These wiring and configuration gaps should be resolved before presenting the full product as an end-to-end system or deploying it publicly.
 
-This is a hackathon prototype. Use the feature branches and pull requests in the repository for team review and integration; the main branch is the shared integration target.
+## Security and deployment
+
+- Treat this repository as a hackathon/demo prototype until the unified API entry point and access controls are in place.
+- Do not publish `.env` files, JWT secrets, bootstrap passwords, SMTP credentials, or database credentials.
+- Review demo/test authentication headers and in-memory fallback behavior before exposing API routes publicly.
+- Configure the backend to honor the hosting provider's port, restrict CORS to the deployed frontend, and use a protected MongoDB account and network allowlist.
+- Set up a real SMTP provider for password reset outside development; Ethereal is a test inbox.
+
+## License
+
+No license file is currently included. Contact the project team before reusing or redistributing the code.

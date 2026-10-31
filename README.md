@@ -163,4 +163,4 @@ The seed utility can replace the product catalog with demo products. Use it only
 
 ## License
 
-MIT
+No license file is currently included. Contact the project team before reusing or redistributing the code.

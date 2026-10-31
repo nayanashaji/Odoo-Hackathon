@@ -1,6 +1,8 @@
+
 const express = require("express");
 
 const discountRoutes = require("./src/routes/discountRoutes");
+const paymentRoutes = require("./src/routes/paymentRoutes");
 
 const app = express();
 
@@ -8,11 +10,12 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
     res.json({
-        message: "Brightloop Discount API is running"
+        message: "Brightloop Backend API is running"
     });
 });
 
 app.use("/api/discounts", discountRoutes);
+app.use("/api/payments", paymentRoutes);
 
 const PORT = 5000;
 

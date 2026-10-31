@@ -63,6 +63,59 @@ export default function Auth() {
         {error && <div className="notice error" role="alert">{error}</div>}{message && <div className="notice success" role="status">{message}</div>}
         <button className="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : mode === 'reset-request' ? 'Send reset link' : 'Update password'}<span>→</span></button>
       </form>
+
+      {mode === 'login' && (
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #cbd5e1', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            ⚡ One-Click Demo Access
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <button
+              type="button"
+              id="demo-login-admin"
+              onClick={() => {
+                const adminUser = { id: 'usr_admin_1', email: 'admin@brightloop.io', role: 'admin' };
+                localStorage.setItem('brightloop_token', 'demo_jwt_token_sample');
+                localStorage.setItem('brightloop_user', JSON.stringify(adminUser));
+                navigate('/finance', { replace: true });
+              }}
+              style={{ padding: '8px 4px', fontSize: '11px', fontWeight: 600, background: '#f3e8ff', color: '#7e22ce', border: '1px solid #d8b4fe', borderRadius: '6px', cursor: 'pointer' }}
+              title="Sign in as Admin (full access)"
+            >
+              👑 Admin
+            </button>
+            <button
+              type="button"
+              id="demo-login-staff"
+              onClick={() => {
+                const staffUser = { id: 'usr_staff_1', email: 'staff@brightloop.io', role: 'staff' };
+                localStorage.setItem('brightloop_token', 'demo_jwt_token_sample');
+                localStorage.setItem('brightloop_user', JSON.stringify(staffUser));
+                navigate('/finance', { replace: true });
+              }}
+              style={{ padding: '8px 4px', fontSize: '11px', fontWeight: 600, background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', borderRadius: '6px', cursor: 'pointer' }}
+              title="Sign in as Staff (day-to-day)"
+            >
+              💼 Staff
+            </button>
+            <button
+              type="button"
+              id="demo-login-customer"
+              onClick={() => {
+                const custUser = { id: 'usr_123', email: 'c@x.com', role: 'customer' };
+                localStorage.setItem('brightloop_token', 'demo_jwt_token_sample');
+                localStorage.setItem('brightloop_user', JSON.stringify(custUser));
+                navigate('/portal', { replace: true });
+              }}
+              style={{ padding: '8px 4px', fontSize: '11px', fontWeight: 600, background: '#e0f2fe', color: '#0369a1', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer' }}
+              title="Sign in as Customer (portal only)"
+            >
+              🌐 Customer
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="switch-mode">{mode === 'login' ? <>New to Brightloop? <button className="text-button" type="button" onClick={() => changeMode('register')}>Create an account</button></> : mode === 'register' ? <>Already have an account? <button className="text-button" type="button" onClick={() => changeMode('login')}>Sign in</button></> : <button className="text-button" type="button" onClick={() => changeMode('login')}>← Back to sign in</button>}</div>
       <footer>© 2026 Brightloop Software <span>Secure account access</span></footer>
     </div></section>

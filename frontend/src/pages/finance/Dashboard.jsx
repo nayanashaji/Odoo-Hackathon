@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import DataTable from '../../components/DataTable';
 import './dashboard.css';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
@@ -45,25 +46,129 @@ export default function Dashboard() {
   if (state === 'signed-out') return <Navigate to="/login" replace />;
 
   const metrics = data?.metrics;
-  return <div className="finance-app-shell">
-    <aside className="finance-sidebar"><a className="finance-brand" href="#top"><span className="finance-logo-icon">b</span><span>brightloop</span></a><div className="finance-workspace"><span className="finance-workspace-icon">B</span><span><strong>Brightloop Software</strong><small>Workspace</small></span><b className="finance-chevron">⌄</b></div><p className="finance-nav-label">WORKSPACE</p><a className="finance-nav-item" href="#overview"><span>◫</span> Overview</a><a className="finance-nav-item" href="#subscriptions"><span>▤</span> Subscriptions</a><a className="finance-nav-item" href="#invoices"><span>▧</span> Invoices</a><a className="finance-nav-item active" href="#finance"><span>▥</span> Finance</a>{user?.role === 'admin' && <Link className="finance-nav-item" to="/admin/users"><span>♙</span> User Management</Link>}<div className="finance-sidebar-bottom"><div className="finance-help-box"><span>✳</span><strong>Need a hand?</strong><small>Visit the help center for guidance.</small><a href="mailto:support@brightloop.example">Get support ↗</a></div><button className="finance-profile" onClick={signOut}><span className="finance-avatar">{user?.email?.[0]?.toUpperCase() ?? 'N'}</span><span><strong>{user?.email ?? 'Finance team'}</strong><small>{user?.role ?? 'Staff'}</small></span><span className="finance-profile-menu">⋯</span></button></div></aside>
-    <main className="finance-main" id="top"><header className="finance-topbar"><div className="finance-breadcrumb">Workspace <span>/</span> Finance</div><button className="finance-avatar tiny" aria-label="Sign out" onClick={signOut}>{user?.email?.[0]?.toUpperCase() ?? 'N'}</button></header>
-      <div className="finance-content"><div className="finance-page-title"><div><p className="finance-eyebrow">FINANCE</p><h1>Overview</h1><p>A clear view of your subscription business.</p></div><div className="finance-title-actions"><button className="finance-outline-button" onClick={() => window.print()}>⇩ <span>Export</span></button><select aria-label="Report period" value={period} onChange={e => setPeriod(e.target.value)}><option value="month">This month</option><option value="year">This year</option><option value="all">All time</option></select></div></div>
+
+  // Standardized DataTable column definitions for Overdue Invoices
+  const overdueInvoiceColumns = [
+    {
+      key: 'id',
+      header: 'Invoice #',
+      sortable: true,
+      render: invoice => <strong>{invoice.id}</strong>
+    },
+    {
+      key: 'due_date',
+      header: 'Due Date',
+      sortable: true,
+      render: invoice => new Date(invoice.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: () => <span className="finance-status-pill">Overdue</span>
+    },
+    {
+      key: 'grand_total',
+      header: 'Amount Due',
+      align: 'right',
+      sortable: true,
+      render: invoice => <span className="finance-amount-cell">{money(invoice.grand_total)}</span>
+    }
+  ];
+
+  return (
+    <div className="finance-dashboard-wrapper">
+      <div className="finance-page-title">
+        <div>
+          <p className="finance-eyebrow">FINANCE</p>
+          <h1>Overview</h1>
+          <p>A clear view of your subscription business.</p>
+        </div>
+        <div className="finance-title-actions">
+          <button className="finance-outline-button" onClick={() => window.print()}>⇩ <span>Export</span></button>
+          <select aria-label="Report period" value={period} onChange={e => setPeriod(e.target.value)}>
+            <option value="month">This month</option>
+            <option value="year">This year</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+      </div>
+
       {state === 'loading' && <div className="finance-loading"><span className="finance-spinner" /> Loading finance data…</div>}
       {state === 'error' && <div className="finance-error-box" role="alert"><strong>We couldn’t load the dashboard</strong><p>{error}</p><button className="finance-outline-button" onClick={() => setRefresh(value => value + 1)}>Try again</button></div>}
-      {state === 'ready' && <>
-        <section className="finance-metrics-grid" aria-label="Finance summary">
-          <article className="finance-metric-card"><div className="finance-metric-top"><span>Active subscriptions</span><span className="finance-metric-icon mint">▤</span></div><strong>{metrics.activeSubscriptions.toLocaleString()}</strong><small>Currently active</small></article>
-          <article className="finance-metric-card"><div className="finance-metric-top"><span>Revenue received</span><span className="finance-metric-icon blue">↗</span></div><strong>{money(metrics.revenue)}</strong><small>{metrics.paymentCount} payments in selected period</small></article>
-          <article className="finance-metric-card"><div className="finance-metric-top"><span>Outstanding invoices</span><span className="finance-metric-icon amber">◷</span></div><strong>{money(metrics.outstandingAmount)}</strong><small>{metrics.outstandingInvoiceCount} invoices awaiting payment</small></article>
-          <article className="finance-metric-card"><div className="finance-metric-top"><span>Overdue invoices</span><span className="finance-metric-icon rose">!</span></div><strong>{metrics.overdueInvoiceCount}</strong><small>Past their due date</small></article>
-        </section>
-        <section className="finance-lower-grid"><article className="finance-panel finance-revenue-panel"><div className="finance-panel-head"><div><h2>Revenue collected</h2><p>Payment totals over the last six months</p></div><span className="finance-legend"><i /> Received</span></div><RevenueChart rows={data.revenueByMonth} /><div className="finance-chart-foot"><span>Last 6 months</span><span className="finance-total-received">{money(metrics.revenue)} <small>in selected period</small></span></div></article>
-          <article className="finance-panel finance-collection-panel"><div className="finance-panel-head"><div><h2>Collections</h2><p>Invoice payment status</p></div><span className="finance-dots">···</span></div><div className="finance-donut-wrap"><div className="finance-donut"><div><strong>{metrics.outstandingInvoiceCount}</strong><small>open invoices</small></div></div></div><div className="finance-collection-legend"><span><i className="paid-dot" />Paid invoice total<strong>{money(metrics.paidInvoiceTotal)}</strong></span><span><i className="open-dot" />Still outstanding<strong>{money(metrics.outstandingAmount)}</strong></span></div></article></section>
-        <section className="finance-panel finance-overdue-panel"><div className="finance-panel-head"><div><h2>Overdue invoices</h2><p>Follow up on payments past their due date.</p></div><a href="#invoices" className="finance-view-all">View invoices <span>→</span></a></div>
-          {data.overdueInvoices.length ? <div className="finance-table-wrap"><table><thead><tr><th>Invoice</th><th>Due date</th><th>Status</th><th>Amount</th></tr></thead><tbody>{data.overdueInvoices.map(invoice => <tr key={invoice.id}><td><strong>{invoice.id}</strong></td><td>{new Date(invoice.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td><td><span className="finance-status-pill">Overdue</span></td><td className="finance-amount-cell">{money(invoice.grand_total)}</td></tr>)}</tbody></table></div> : <div className="finance-empty-state"><span>✓</span><strong>You’re all caught up</strong><p>No overdue invoices found.</p></div>}
-        </section><footer className="finance-page-footer">Brightloop Finance <span>Data updates when you change the reporting period.</span></footer>
-      </>}
-      </div></main>
-  </div>;
+
+      {state === 'ready' && metrics && (
+        <>
+          <section className="finance-metrics-grid" aria-label="Finance summary">
+            <article className="finance-metric-card">
+              <div className="finance-metric-top"><span>Active subscriptions</span><span className="finance-metric-icon mint">▤</span></div>
+              <strong>{metrics.activeSubscriptions.toLocaleString()}</strong>
+              <small>Currently active</small>
+            </article>
+            <article className="finance-metric-card">
+              <div className="finance-metric-top"><span>Revenue received</span><span className="finance-metric-icon blue">↗</span></div>
+              <strong>{money(metrics.revenue)}</strong>
+              <small>{metrics.paymentCount} payments in selected period</small>
+            </article>
+            <article className="finance-metric-card">
+              <div className="finance-metric-top"><span>Outstanding invoices</span><span className="finance-metric-icon amber">◷</span></div>
+              <strong>{money(metrics.outstandingAmount)}</strong>
+              <small>{metrics.outstandingInvoiceCount} invoices awaiting payment</small>
+            </article>
+            <article className="finance-metric-card">
+              <div className="finance-metric-top"><span>Overdue invoices</span><span className="finance-metric-icon rose">!</span></div>
+              <strong>{metrics.overdueInvoiceCount}</strong>
+              <small>Past their due date</small>
+            </article>
+          </section>
+
+          <section className="finance-lower-grid">
+            <article className="finance-panel finance-revenue-panel">
+              <div className="finance-panel-head">
+                <div><h2>Revenue collected</h2><p>Payment totals over the last six months</p></div>
+                <span className="finance-legend"><i /> Received</span>
+              </div>
+              <RevenueChart rows={data.revenueByMonth} />
+              <div className="finance-chart-foot">
+                <span>Last 6 months</span>
+                <span className="finance-total-received">{money(metrics.revenue)} <small>in selected period</small></span>
+              </div>
+            </article>
+
+            <article className="finance-panel finance-collection-panel">
+              <div className="finance-panel-head">
+                <div><h2>Collections</h2><p>Invoice payment status</p></div>
+                <span className="finance-dots">···</span>
+              </div>
+              <div className="finance-donut-wrap">
+                <div className="finance-donut">
+                  <div><strong>{metrics.outstandingInvoiceCount}</strong><small>open invoices</small></div>
+                </div>
+              </div>
+              <div className="finance-collection-legend">
+                <span><i className="paid-dot" />Paid invoice total<strong>{money(metrics.paidInvoiceTotal)}</strong></span>
+                <span><i className="open-dot" />Still outstanding<strong>{money(metrics.outstandingAmount)}</strong></span>
+              </div>
+            </article>
+          </section>
+
+          {/* Standardized DataTable component for overdue invoices list */}
+          <div style={{ marginTop: '20px' }}>
+            <DataTable
+              title="Overdue Invoices"
+              subtitle="Follow up on payments past their due date."
+              columns={overdueInvoiceColumns}
+              data={data.overdueInvoices}
+              searchable={true}
+              searchPlaceholder="Search overdue invoices..."
+              emptyMessage="You’re all caught up. No overdue invoices found."
+              emptyIcon="✓"
+              pagination={false}
+            />
+          </div>
+
+          <footer className="finance-page-footer">Brightloop Finance <span>Data updates when you change the reporting period.</span></footer>
+        </>
+      )}
+    </div>
+  );
 }

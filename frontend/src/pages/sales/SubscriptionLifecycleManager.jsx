@@ -3,6 +3,7 @@ import SubscriptionStateBadge from './SubscriptionStateBadge';
 import SubscriptionStateStepper from './SubscriptionStateStepper';
 import SubscriptionOverrideModal from './SubscriptionOverrideModal';
 import SubscriptionTransitionTimeline from './SubscriptionTransitionTimeline';
+import DataTable from '../../components/DataTable';
 import {
   INITIAL_SUBSCRIPTIONS,
   SUBSCRIPTION_STATES,
@@ -238,6 +239,135 @@ export default function SubscriptionLifecycleManager() {
   // Calculate KPI stats
   const countByState = (state) => subscriptions.filter((s) => s.status === state).length;
 
+  // Standardized DataTable Column Definitions
+  const subscriptionColumns = [
+    {
+      key: 'id',
+      header: 'Subscription',
+      width: '13%',
+      sortable: true,
+      render: (sub) => (
+        <div className="sub-id-cell">
+          <strong>{sub.id}</strong>
+          <span className="sub-date">
+            {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString() : 'N/A'}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'customer',
+      header: 'Customer (Mock usr_123)',
+      width: '20%',
+      sortable: true,
+      sortKey: (s) => s.customer?.name || '',
+      render: (sub) => (
+        <div className="customer-cell">
+          <strong>{sub.customer?.name || 'Customer'}</strong>
+          <span className="customer-meta">
+            ID: <code>{sub.customer?.id || 'usr_123'}</code>
+          </span>
+          <span className="customer-email">{sub.customer?.email}</span>
+        </div>
+      )
+    },
+    {
+      key: 'product',
+      header: 'Product & Plan',
+      width: '18%',
+      render: (sub) => (
+        <div className="product-cell">
+          <span className="product-title">
+            {sub.lines?.[0]?.product_name || 'Enterprise Cloud Server'}
+          </span>
+          <span className="product-lines-meta">
+            <code>{sub.lines?.[0]?.product_id || 'prod_1'}</code> • {sub.lines?.[0]?.quantity || 1} units
+          </span>
+          <span className="plan-name">{sub.plan?.name || 'Yearly Enterprise'}</span>
+        </div>
+      )
+    },
+    {
+      key: 'grand_total',
+      header: 'Amount',
+      width: '12%',
+      sortable: true,
+      sortKey: (s) => Number(s.grand_total || 0),
+      render: (sub) => (
+        <div className="amount-cell">
+          <strong>${Number(sub.grand_total || 0).toLocaleString()}</strong>
+          <span className="billing-meta">{sub.plan?.billing_frequency || 'yearly'}</span>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Current State',
+      width: '15%',
+      sortable: true,
+      render: (sub) => (
+        <div className="state-cell">
+          <SubscriptionStateBadge status={sub.status} />
+          <div className="mini-stepper-wrap">
+            <SubscriptionStateStepper currentState={sub.status} compact={true} />
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      header: 'Sales Actions / Manual Override',
+      width: '22%',
+      align: 'right',
+      render: (sub) => {
+        const nextState = getNextSequentialState(sub.status);
+        const allowed = ALLOWED_STATE_TRANSITIONS[sub.status] || [];
+        const canCancel = allowed.includes(SUBSCRIPTION_STATES.CANCELLED);
+
+        return (
+          <div className="table-actions-group">
+            {nextState && (
+              <button
+                type="button"
+                className="btn btn-sm btn-advance"
+                onClick={() => handleQuickAdvance(sub)}
+                title={`Advance to next stage: ${nextState}`}
+              >
+                ➔ Advance to {nextState}
+              </button>
+            )}
+            {canCancel && (
+              <button
+                type="button"
+                className="btn btn-sm btn-cancel-action"
+                onClick={() => handleQuickCancel(sub)}
+                title="Cancel subscription"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-override"
+              onClick={() => setSelectedSubForOverride(sub)}
+              title="Open Manual State Override & Jump Test"
+            >
+              Override...
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-icon"
+              onClick={() => setSelectedSubForTimeline(sub)}
+              title="View state transition audit log"
+            >
+              📜
+            </button>
+          </div>
+        );
+      }
+    }
+  ];
+
   return (
     <div className="subscription-lifecycle-dashboard">
       {/* Toast Notification */}
@@ -392,144 +522,16 @@ export default function SubscriptionLifecycleManager() {
           </div>
         </div>
 
-        {/* Subscriptions Table */}
-        {loading ? (
-          <div className="table-loading">
-            <div className="spinner" />
-            <span>Loading subscriptions state machine data...</span>
-          </div>
-        ) : filteredSubscriptions.length === 0 ? (
-          <div className="table-empty">
-            <p>No subscriptions found matching filter "{activeFilter}".</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="subscriptions-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '12%' }}>Subscription</th>
-                  <th style={{ width: '20%' }}>Customer (Mock usr_123)</th>
-                  <th style={{ width: '18%' }}>Product & Plan</th>
-                  <th style={{ width: '12%' }}>Amount</th>
-                  <th style={{ width: '14%' }}>Current State</th>
-                  <th style={{ width: '24%' }} className="text-right">Sales Actions / Manual Override</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSubscriptions.map((sub) => {
-                  const nextState = getNextSequentialState(sub.status);
-                  const allowed = ALLOWED_STATE_TRANSITIONS[sub.status] || [];
-                  const canCancel = allowed.includes(SUBSCRIPTION_STATES.CANCELLED);
-
-                  return (
-                    <tr key={sub.id}>
-                      {/* ID & date */}
-                      <td>
-                        <div className="sub-id-cell">
-                          <strong>{sub.id}</strong>
-                          <span className="sub-date">
-                            {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Customer */}
-                      <td>
-                        <div className="customer-cell">
-                          <strong>{sub.customer?.name || 'Customer'}</strong>
-                          <span className="customer-meta">
-                            ID: <code>{sub.customer?.id || 'usr_123'}</code>
-                          </span>
-                          <span className="customer-email">{sub.customer?.email}</span>
-                        </div>
-                      </td>
-
-                      {/* Product & Plan */}
-                      <td>
-                        <div className="product-cell">
-                          <span className="product-title">
-                            {sub.lines?.[0]?.product_name || 'Enterprise Cloud Server'}
-                          </span>
-                          <span className="product-lines-meta">
-                            <code>{sub.lines?.[0]?.product_id || 'prod_1'}</code> • {sub.lines?.[0]?.quantity || 1} units
-                          </span>
-                          <span className="plan-name">{sub.plan?.name || 'Yearly Enterprise'}</span>
-                        </div>
-                      </td>
-
-                      {/* Amount */}
-                      <td>
-                        <div className="amount-cell">
-                          <strong>${Number(sub.grand_total || 0).toLocaleString()}</strong>
-                          <span className="billing-meta">{sub.plan?.billing_frequency || 'yearly'}</span>
-                        </div>
-                      </td>
-
-                      {/* Current State & Stepper Preview */}
-                      <td>
-                        <div className="state-cell">
-                          <SubscriptionStateBadge status={sub.status} />
-                          <div className="mini-stepper-wrap">
-                            <SubscriptionStateStepper currentState={sub.status} compact={true} />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Sales Override & Progression Actions */}
-                      <td className="text-right">
-                        <div className="table-actions-group">
-                          {/* Push Forward Action */}
-                          {nextState && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-advance"
-                              onClick={() => handleQuickAdvance(sub)}
-                              title={`Advance to next stage: ${nextState}`}
-                            >
-                              ➔ Advance to {nextState}
-                            </button>
-                          )}
-
-                          {/* Quick Cancel Button */}
-                          {canCancel && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-cancel-action"
-                              onClick={() => handleQuickCancel(sub)}
-                              title="Cancel subscription"
-                            >
-                              Cancel
-                            </button>
-                          )}
-
-                          {/* Manual Override Dialog Trigger */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-override"
-                            onClick={() => setSelectedSubForOverride(sub)}
-                            title="Open Manual State Override & Jump Test"
-                          >
-                            Override...
-                          </button>
-
-                          {/* View Audit Trail */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-icon"
-                            onClick={() => setSelectedSubForTimeline(sub)}
-                            title="View state transition audit log"
-                          >
-                            📜
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* Standardized Reusable DataTable */}
+        <DataTable
+          columns={subscriptionColumns}
+          data={filteredSubscriptions}
+          loading={loading}
+          emptyMessage={`No subscriptions found matching filter "${activeFilter}".`}
+          emptyIcon="▤"
+          pagination={true}
+          pageSize={10}
+        />
       </div>
 
       {/* Manual Override Modal */}

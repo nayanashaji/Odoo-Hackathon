@@ -592,3 +592,21 @@ exports.deletePlan = async (req, res) => {
     });
   }
 };
+
+// ============================================================================
+// SUBSCRIPTION STATE MACHINE DELEGATION
+// Supports test suites that reference planController for subscription logic
+// ============================================================================
+const subscriptionStateCtrl = require('./subscriptionStateController');
+
+exports.updateSubscriptionState = subscriptionStateCtrl.updateSubscriptionState;
+exports.createSubscription = subscriptionStateCtrl.createSubscription;
+exports.updateSubscription = subscriptionStateCtrl.updateSubscription;
+exports.getAllSubscriptions = subscriptionStateCtrl.getAllSubscriptions;
+exports.getSubscriptionById = subscriptionStateCtrl.getSubscriptionById;
+exports.getStateMachineDefinition = subscriptionStateCtrl.getStateMachineDefinition;
+exports.validateStateTransition = subscriptionStateCtrl.validateStateTransition;
+exports.SUBSCRIPTION_STATES = subscriptionStateCtrl.SUBSCRIPTION_STATES;
+exports.ALLOWED_STATE_TRANSITIONS = subscriptionStateCtrl.ALLOWED_STATE_TRANSITIONS;
+exports.SEQUENTIAL_FLOW = subscriptionStateCtrl.SEQUENTIAL_FLOW;
+

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import DataTable from '../../components/DataTable';
 import './userManagement.css';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
@@ -62,12 +62,49 @@ export default function UserManagement() {
     }
   }
 
-  return <main className="users-page">
-    <header className="users-topbar"><Link className="users-brand" to="/finance"><span className="users-brand-mark">b</span> brightloop</Link><Link className="users-back" to="/finance">← Finance overview</Link></header>
-    <div className="users-content">
-      <div className="users-title"><div><p className="users-eyebrow">ADMINISTRATION</p><h1>User Management</h1><p>Add and review internal staff accounts.</p></div><span className="users-role-pill">Admin only</span></div>
+  const staffColumns = [
+    {
+      key: 'email',
+      header: 'Account',
+      sortable: true,
+      render: member => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="users-avatar">{member.email[0].toUpperCase()}</span>
+          <div>
+            <strong style={{ fontSize: '13px', color: '#1e293b' }}>{member.email}</strong>
+            <small style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>{member.id}</small>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      align: 'right',
+      render: () => <span className="users-role-pill staff">Staff</span>
+    }
+  ];
+
+  return (
+    <div className="users-page-wrapper">
+      <div className="users-title">
+        <div>
+          <p className="users-eyebrow">ADMINISTRATION</p>
+          <h1>User Management</h1>
+          <p>Add and review internal staff accounts.</p>
+        </div>
+        <span className="users-role-pill">Admin only</span>
+      </div>
+
       <div className="users-grid">
-        <section className="users-card"><div className="users-card-heading"><span className="users-card-icon">＋</span><div><h2>Add a staff member</h2><p>Staff accounts receive limited internal access.</p></div></div>
+        <section className="users-card">
+          <div className="users-card-heading">
+            <span className="users-card-icon">＋</span>
+            <div>
+              <h2>Add a staff member</h2>
+              <p>Staff accounts receive limited internal access.</p>
+            </div>
+          </div>
           <form className="users-form" onSubmit={createStaff}>
             <label>Email address<input type="email" autoComplete="email" placeholder="teammate@company.com" value={email} onChange={event => setEmail(event.target.value)} required /></label>
             <label>Temporary password<input type="password" autoComplete="new-password" placeholder="Create a strong password" value={password} onChange={event => setPassword(event.target.value)} minLength="9" required /><small>9–72 bytes; include uppercase, lowercase, and a special character.</small></label>
@@ -76,10 +113,29 @@ export default function UserManagement() {
             <button className="users-submit" disabled={saving}>{saving ? 'Creating account…' : 'Create staff account'}<span>→</span></button>
           </form>
         </section>
-        <section className="users-card users-list-card"><div className="users-card-heading"><span className="users-card-icon people">♙</span><div><h2>Staff accounts</h2><p>{staff.length} internal {staff.length === 1 ? 'member' : 'members'}</p></div><button className="users-refresh" onClick={loadStaff} aria-label="Refresh staff list">↻</button></div>
-          {loading ? <div className="users-list-state">Loading staff accounts…</div> : error && staff.length === 0 ? <div className="users-list-state">Could not load staff accounts.</div> : staff.length === 0 ? <div className="users-empty"><span>♙</span><strong>No staff accounts yet</strong><p>Create the first internal account with the form.</p></div> : <div className="users-table-wrap"><table><thead><tr><th>Account</th><th>Role</th></tr></thead><tbody>{staff.map(member => <tr key={member.id}><td><span className="users-avatar">{member.email[0].toUpperCase()}</span><span><strong>{member.email}</strong><small>{member.id}</small></span></td><td><span className="users-role-pill staff">Staff</span></td></tr>)}</tbody></table></div>}
+
+        <section className="users-card users-list-card">
+          <div className="users-card-heading">
+            <span className="users-card-icon people">♙</span>
+            <div>
+              <h2>Staff accounts</h2>
+              <p>{staff.length} internal {staff.length === 1 ? 'member' : 'members'}</p>
+            </div>
+            <button className="users-refresh" onClick={loadStaff} aria-label="Refresh staff list">↻</button>
+          </div>
+
+          <DataTable
+            columns={staffColumns}
+            data={staff}
+            loading={loading}
+            emptyMessage="No staff accounts yet. Create the first internal account with the form."
+            emptyIcon="♙"
+            searchable={staff.length > 5}
+            pagination={staff.length > 10}
+            pageSize={10}
+          />
         </section>
       </div>
     </div>
-  </main>;
+  );
 }

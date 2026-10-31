@@ -261,6 +261,8 @@ let subscriptionsStore = getInitialSubscriptionsStore();
 exports._resetStore = () => {
   subscriptionsStore = getInitialSubscriptionsStore();
 };
+exports._getStore = () => subscriptionsStore;
+exports.enrichSubscription = enrichSubscription;
 
 // Helper: Match input state string to canonical capitalized state enum
 function normalizeState(stateInput) {
@@ -378,11 +380,11 @@ exports.updateSubscriptionState = async (req, res) => {
     const isTransitionAllowed = allowedTransitions.includes(canonicalTarget);
 
     if (!isTransitionAllowed) {
-      // REJECT INVALID JUMP
+      // REJECT INVALID JUMP / SKIP
       return res.status(400).json({
         success: false,
         error: 'Invalid state transition',
-        message: `Cannot transition from '${currentState}' directly to '${canonicalTarget}'. Invalid state jump rejected.`,
+        message: `Cannot transition from '${currentState}' directly to '${canonicalTarget}'. Invalid state jump rejected. Status must strictly transition Draft -> Quotation -> Confirmed -> Active -> Closed.`,
         details: {
           subscription_id: id,
           current_state: currentState,
@@ -391,6 +393,29 @@ exports.updateSubscriptionState = async (req, res) => {
           sequential_flow: 'Draft → Quotation → Confirmed → Active → Closed'
         }
       });
+    }
+
+    // Quotation Expiration Constraint:
+    // When transitioning from Quotation to Confirmed, verify that quotation has not expired
+    if (currentState === SUBSCRIPTION_STATES.QUOTATION && canonicalTarget === SUBSCRIPTION_STATES.CONFIRMED) {
+      const expDate = subscription.expiration_date || (subscription.quote && subscription.quote.expiration_date);
+      if (expDate) {
+        const expTime = new Date(expDate).getTime();
+        if (!isNaN(expTime) && Date.now() > expTime) {
+          return res.status(400).json({
+            success: false,
+            error: 'Quotation expired',
+            message: `Cannot transition to 'Confirmed': Quotation expired on ${new Date(expDate).toISOString()} (${subscription.validity_duration || 14} ${subscription.validity_unit || 'days'} validity period exceeded). Please generate a new quotation.`,
+            details: {
+              subscription_id: id,
+              current_state: currentState,
+              attempted_state: canonicalTarget,
+              expiration_date: new Date(expDate).toISOString(),
+              is_expired: true
+            }
+          });
+        }
+      }
     }
 
     // Build Transition Audit Log
@@ -544,10 +569,28 @@ exports.getSubscriptionById = async (req, res) => {
 /**
  * POST /api/subscriptions
  * Create a new subscription starting strictly in the 'Draft' state
+ * Explicitly rejects any request attempting to create a subscription in a skipped state
  */
 exports.createSubscription = async (req, res) => {
   try {
-    const { customer_id, plan_id, lines, grand_total, initial_notes } = req.body;
+    const { customer_id, plan_id, lines, grand_total, initial_notes, status, state } = req.body;
+
+    const requestedStatus = status || state;
+    if (requestedStatus) {
+      const canonical = normalizeState(requestedStatus);
+      if (canonical && canonical !== SUBSCRIPTION_STATES.DRAFT) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid initial state',
+          message: `Cannot create subscription directly in state '${requestedStatus}'. Subscriptions must strictly begin in '${SUBSCRIPTION_STATES.DRAFT}' state. Status must strictly transition Draft -> Quotation -> Confirmed -> Active -> Closed.`,
+          details: {
+            attempted_state: canonical,
+            required_initial_state: SUBSCRIPTION_STATES.DRAFT,
+            sequential_flow: 'Draft → Quotation → Confirmed → Active → Closed'
+          }
+        });
+      }
+    }
 
     const newId = `sub_${Date.now()}`;
     const newSubscription = {
@@ -609,6 +652,66 @@ exports.createSubscription = async (req, res) => {
     });
   } catch (err) {
     return res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
+/**
+ * PUT or PATCH /api/subscriptions/:id
+ * General subscription update handler.
+ * If status/state is provided, strictly enforces the state machine.
+ */
+exports.updateSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, state, ...otherUpdates } = req.body;
+
+    const requestedState = status || state;
+    if (requestedState) {
+      req.body.state = requestedState;
+      return exports.updateSubscriptionState(req, res);
+    }
+
+    let subscription = null;
+    let isFromDb = false;
+
+    if (isDbConnected() && SubscriptionModel && typeof SubscriptionModel.findOne === 'function') {
+      subscription = await SubscriptionModel.findOne({ id });
+      if (subscription) isFromDb = true;
+    }
+
+    if (!subscription) {
+      subscription = subscriptionsStore.find((s) => s.id === id);
+    }
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: `Subscription with ID '${id}' not found`
+      });
+    }
+
+    Object.assign(subscription, otherUpdates);
+    subscription.updatedAt = new Date();
+
+    if (isFromDb) {
+      await subscription.save();
+      return res.status(200).json({
+        success: true,
+        message: `Subscription '${id}' updated successfully`,
+        data: enrichSubscription(subscription.toObject())
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Subscription '${id}' updated successfully`,
+      data: enrichSubscription(subscription)
+    });
+  } catch (err) {
+    return res.status(500).json({
       success: false,
       error: err.message
     });
@@ -678,4 +781,18 @@ exports.getStateMachineDefinition = (req, res) => {
     }
   });
 };
+
+// State Machine Constants & Utilities Exports
+exports.SUBSCRIPTION_STATES = SUBSCRIPTION_STATES;
+exports.ALLOWED_STATE_TRANSITIONS = ALLOWED_STATE_TRANSITIONS;
+exports.SEQUENTIAL_FLOW = SEQUENTIAL_FLOW;
+exports.normalizeState = normalizeState;
+exports.validateStateTransition = (currentState, targetState) => {
+  const c = normalizeState(currentState);
+  const t = normalizeState(targetState);
+  if (!c || !t) return false;
+  const allowed = ALLOWED_STATE_TRANSITIONS[c] || [];
+  return allowed.includes(t);
+};
+
 

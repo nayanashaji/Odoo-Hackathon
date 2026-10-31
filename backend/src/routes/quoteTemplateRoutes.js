@@ -23,6 +23,8 @@ router.delete('/:id', quoteTemplateController.deleteQuoteTemplate);
 // Business actions
 router.post('/:id/duplicate', quoteTemplateController.duplicateQuoteTemplate);
 router.post('/:id/preview-quote', quoteTemplateController.previewQuoteFromTemplate);
+router.post('/:id/generate-quote', quoteTemplateController.generateQuoteFromTemplate);
+router.post('/:id/quotes', quoteTemplateController.generateQuoteFromTemplate);
 
 module.exports = router;
 

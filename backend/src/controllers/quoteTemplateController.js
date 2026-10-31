@@ -239,6 +239,43 @@ let memoryTemplates = [
     updatedAt: new Date('2026-10-15T09:00:00Z')
   },
   {
+    id: 'tmpl_14_days',
+    name: '14-Day Standard Quotation Blueprint',
+    description: 'Fixed 14-day validity quotation blueprint for enterprise proposals.',
+    validity_duration: 14, // 14 days validity
+    validity_unit: 'days',
+    validity_terms: 'This quotation is strictly valid for 14 calendar days from the date of issue. Upon expiration, unconfirmed quotes lapse.',
+    plan_id: 'plan_1',
+    plan_name: 'Enterprise Yearly Auto-Renew Plan',
+    billing_frequency: 'yearly',
+    closing_behavior: 'renew',
+    require_signature: true,
+    require_payment: false,
+    status: 'active',
+    created_by: 'usr_123',
+    author_name: 'Marcus Vance',
+    lines: [
+      {
+        line_id: 'line_14d_1',
+        product_id: 'prod_1',
+        product_name: 'Brightloop Enterprise Cloud Server',
+        variant_id: 'var_1',
+        variant_name: 'Dell PowerEdge / Enterprise Tier',
+        description: 'Dedicated enterprise cluster node',
+        quantity: 2,
+        unit_price: 1200,
+        price_modifier: 560,
+        discount_percent: 0,
+        total_amount: 3520.00
+      }
+    ],
+    subtotal: 3520.00,
+    total_discount: 0.00,
+    grand_total: 3520.00,
+    createdAt: new Date('2026-10-25T10:00:00Z'),
+    updatedAt: new Date('2026-10-25T10:00:00Z')
+  },
+  {
     id: 'tmpl_quick_consult',
     name: 'Fast-Track SaaS Starter (15-Day Flash Validity)',
     description: 'Short-validity template for promotional time-limited software licenses.',
@@ -853,3 +890,186 @@ exports.previewQuoteFromTemplate = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+/**
+ * In-memory store for quotations generated from templates
+ */
+let generatedQuotesStore = [];
+
+/**
+ * POST /api/quote-templates/:id/generate-quote (or /api/quote-templates/:id/quotes)
+ * Generates an active Sales Quotation from this template.
+ * Strictly enforces template validity constraints:
+ * - Validity duration and unit are directly derived from the template (e.g. 14 days).
+ * - Expiration date is calculated as base quotation_date + template.validity_duration.
+ * - If client attempts to override the expiration date with a non-compliant date,
+ *   the request is rejected with HTTP 400 Bad Request to strictly enforce the constraint.
+ */
+exports.generateQuoteFromTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      quotation_date = new Date(),
+      customer_id = 'usr_123',
+      expiration_date,
+      notes,
+      lines_override
+    } = req.body || {};
+
+    let template = null;
+    if (isDbConnected()) {
+      template = await QuoteTemplate.findOne({ id });
+      if (template) template = template.toObject();
+    } else {
+      template = memoryTemplates.find((t) => t.id === id);
+    }
+
+    if (!template) {
+      return res.status(404).json({ success: false, error: `Quote template '${id}' not found` });
+    }
+
+    // Resolve Customer
+    const customer = MOCK_USERS.find((u) => u.id === customer_id) || {
+      id: customer_id,
+      name: 'Claire Dupont',
+      email: 'c@x.com',
+      role: 'customer',
+      company: 'Nexus Innovations Ltd'
+    };
+
+    // Calculate dynamic validity strictly respecting the template's defined duration (e.g. 14 days)
+    const baseDate = new Date(quotation_date);
+    const validityDetails = computeValidityDetails(
+      template.validity_duration,
+      template.validity_unit || 'days',
+      baseDate
+    );
+
+    // If client supplied an explicit expiration_date, verify it strictly matches the template constraint
+    if (expiration_date) {
+      const clientExpTime = new Date(expiration_date).getTime();
+      const templateExpTime = new Date(validityDetails.expiration_date).getTime();
+      // Allow max 60 seconds tolerance for timezone/parsing discrepancies
+      if (Math.abs(clientExpTime - templateExpTime) > 60000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validity period constraint violation',
+          message: `Generated quotation must strictly respect the template's defined validity period of ${template.validity_duration} ${template.validity_unit || 'days'}. Expected expiration date is ${validityDetails.expiration_date}, but received ${expiration_date}.`,
+          details: {
+            template_id: template.id,
+            template_validity_duration: template.validity_duration,
+            template_validity_unit: template.validity_unit || 'days',
+            expected_expiration_date: validityDetails.expiration_date,
+            attempted_expiration_date: expiration_date
+          }
+        });
+      }
+    }
+
+    // Process line items & financials
+    const linesToUse = lines_override && lines_override.length > 0 ? lines_override : template.lines;
+    const financials = calculateTemplateFinancials(linesToUse);
+
+    const quoteId = `quote_${Date.now()}`;
+    const quoteNumber = `SO-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const generatedQuote = {
+      id: quoteId,
+      quote_number: quoteNumber,
+      status: validityDetails.is_expired ? 'Expired' : 'Quotation',
+      template_id: template.id,
+      template_name: template.name,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        company: customer.company || 'Customer Corp'
+      },
+      order_date: validityDetails.quotation_date,
+      quotation_date: validityDetails.quotation_date,
+      // Strictly enforced template validity attributes
+      validity_duration: template.validity_duration,
+      validity_unit: template.validity_unit || 'days',
+      validity_period_days: validityDetails.validity_duration,
+      expiration_date: validityDetails.expiration_date,
+      is_expired: validityDetails.is_expired,
+      days_remaining: validityDetails.days_remaining,
+      validity_status: validityDetails.status_label,
+      terms_and_conditions: template.validity_terms,
+      plan: {
+        id: template.plan_id || 'plan_1',
+        name: template.plan_name || 'Yearly Auto-Renew Plan',
+        billing_frequency: template.billing_frequency || 'yearly',
+        closing_behavior: template.closing_behavior || 'renew'
+      },
+      lines: financials.lines,
+      subtotal: financials.subtotal,
+      total_discount: financials.total_discount,
+      grand_total: financials.grand_total,
+      requires_online_signature: template.require_signature !== false,
+      requires_online_payment: template.require_payment === true,
+      notes: notes || `Generated from quotation template '${template.name}'`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      transition_history: [
+        {
+          from_state: 'Initial',
+          to_state: 'Quotation',
+          timestamp: new Date(),
+          actor_id: (req.user && req.user.id) || 'usr_sales_101',
+          actor_role: (req.user && req.user.role) || 'sales_rep',
+          reason: `Quotation generated with strictly enforced validity period of ${template.validity_duration} ${template.validity_unit || 'days'} (expires: ${validityDetails.expiration_date})`
+        }
+      ]
+    };
+
+    // Store in generated quotes collection / memory
+    generatedQuotesStore.unshift(generatedQuote);
+
+    return res.status(201).json({
+      success: true,
+      message: `Quotation generated successfully respecting template's defined validity period (${template.validity_duration} ${template.validity_unit || 'days'})`,
+      data: generatedQuote
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Aliases
+exports.createQuoteFromTemplate = exports.generateQuoteFromTemplate;
+
+/**
+ * Validates whether a quotation conforms to a template's defined validity constraints
+ */
+exports.validateQuoteValidity = (quote, template) => {
+  if (!quote || !template) return { valid: false, error: 'Quote and template required' };
+
+  const duration = template.validity_duration || 14;
+  const unit = template.validity_unit || 'days';
+  const baseDate = new Date(quote.order_date || quote.quotation_date || quote.createdAt);
+  const expectedDetails = computeValidityDetails(duration, unit, baseDate);
+
+  const quoteExpTime = new Date(quote.expiration_date).getTime();
+  const expectedExpTime = new Date(expectedDetails.expiration_date).getTime();
+
+  const respectsValidityPeriod = Math.abs(quoteExpTime - expectedExpTime) <= 60000;
+  const isExpired = Date.now() > quoteExpTime;
+
+  return {
+    valid: respectsValidityPeriod,
+    is_expired: isExpired,
+    expected_expiration_date: expectedDetails.expiration_date,
+    actual_expiration_date: quote.expiration_date,
+    validity_duration: duration,
+    validity_unit: unit,
+    days_remaining: expectedDetails.days_remaining
+  };
+};
+
+// State Machine and Helper Exports
+exports.computeValidityDetails = computeValidityDetails;
+exports.calculateTemplateFinancials = calculateTemplateFinancials;
+exports.getGeneratedQuotesStore = () => generatedQuotesStore;
+exports._resetQuotesStore = () => { generatedQuotesStore = []; };
+

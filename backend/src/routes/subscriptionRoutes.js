@@ -21,5 +21,9 @@ router.get('/:id', subscriptionStateController.getSubscriptionById);
 // Enforces sequential state flow: Draft → Quotation → Confirmed → Active → Closed
 router.put('/:id/state', subscriptionStateController.updateSubscriptionState);
 
+// General update routes with state validation
+router.put('/:id', subscriptionStateController.updateSubscription);
+router.patch('/:id', subscriptionStateController.updateSubscription);
+
 module.exports = router;
 

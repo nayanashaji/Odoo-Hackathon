@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './ProductCatalog.css';
+import DataTable from '../../components/DataTable';
 
 // Initial seed conforming to docs/schema.json contract
 const INITIAL_PRODUCTS = [
@@ -177,6 +178,7 @@ export default function ProductCatalog() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activeVariants, setActiveVariants] = useState({}); // { [productId]: variantId }
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -508,6 +510,149 @@ export default function ProductCatalog() {
     showNotification(`Product ${productId} deleted successfully.`, 'info');
   };
 
+  // Standardized DataTable column definitions
+  const productColumns = useMemo(
+    () => [
+      {
+        key: 'product',
+        header: 'Product',
+        width: '26%',
+        sortable: true,
+        sortKey: (p) => p.name,
+        render: (product) => (
+          <div className="product-table-cell">
+            <div className="product-meta" style={{ marginBottom: '4px' }}>
+              <span className="product-id-tag">{product.id}</span>
+              <span className="product-category-tag">{product.category}</span>
+            </div>
+            <strong style={{ display: 'block', fontSize: '13px', color: '#0f172a' }}>{product.name}</strong>
+            <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+              {product.description || 'No description provided.'}
+            </p>
+          </div>
+        )
+      },
+      {
+        key: 'pricing',
+        header: 'Base Pricing',
+        width: '14%',
+        sortable: true,
+        sortKey: (p) => p.sales_price,
+        render: (product) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '12px' }}>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase' }}>Sales: </span>
+              <strong style={{ color: '#16a34a' }}>${product.sales_price.toLocaleString()}</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase' }}>Cost: </span>
+              <span style={{ color: '#64748b' }}>${product.cost_price.toLocaleString()}</span>
+            </div>
+          </div>
+        )
+      },
+      {
+        key: 'variants',
+        header: 'Active Variant (Live Modifier)',
+        width: '28%',
+        render: (product) => {
+          const selectedVariantId = activeVariants[product.id];
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {product.variants && product.variants.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {product.variants.map((v) => {
+                    const isSelected = selectedVariantId === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        className={`variant-pill ${isSelected ? 'selected' : ''}`}
+                        style={{ padding: '3px 8px', fontSize: '11px', cursor: 'pointer' }}
+                        onClick={() =>
+                          setActiveVariants((prev) => ({
+                            ...prev,
+                            [product.id]: v.id
+                          }))
+                        }
+                        title="Click to preview dynamic price modifier"
+                      >
+                        <span>{v.name}</span>
+                        <span style={{ fontWeight: 700, marginLeft: '4px', color: isSelected ? '#166534' : '#0284c7' }}>
+                          +{v.price_modifier >= 0 ? `$${v.price_modifier}` : `-$${Math.abs(v.price_modifier)}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Base product only</span>
+              )}
+              <button
+                type="button"
+                className="btn-text-action"
+                style={{ fontSize: '11px', padding: 0, textAlign: 'left', color: '#2563eb' }}
+                onClick={() => handleOpenAddVariantModal(product)}
+              >
+                ＋ Add Variant
+              </button>
+            </div>
+          );
+        }
+      },
+      {
+        key: 'dynamic_price',
+        header: 'Live Dynamic Calculation',
+        width: '20%',
+        sortable: true,
+        sortKey: (product) => {
+          const selectedVariantId = activeVariants[product.id];
+          const v = product.variants?.find((item) => item.id === selectedVariantId);
+          return product.sales_price + (v ? Number(v.price_modifier) || 0 : 0);
+        },
+        render: (product) => {
+          const selectedVariantId = activeVariants[product.id];
+          const currentVariant = product.variants?.find((v) => v.id === selectedVariantId) || null;
+          const modifier = currentVariant ? Number(currentVariant.price_modifier) || 0 : 0;
+          const dynamicFinalPrice = product.sales_price + modifier;
+          const profit = dynamicFinalPrice - product.cost_price;
+          const profitPercentage = ((profit / dynamicFinalPrice) * 100).toFixed(1);
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ fontSize: '12px' }}>
+                <span style={{ color: '#64748b' }}>Base (${product.sales_price}) + ({modifier}) = </span>
+                <strong style={{ color: '#0f172a', fontSize: '13px' }}>${dynamicFinalPrice.toLocaleString()}</strong>
+              </div>
+              <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                Margin: ${profit} ({profitPercentage}%)
+              </div>
+            </div>
+          );
+        }
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        width: '12%',
+        align: 'right',
+        render: (product) => (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+            <button
+              type="button"
+              className="icon-btn delete-btn"
+              title="Delete Product"
+              onClick={() => handleDeleteProduct(product.id)}
+            >
+              🗑️
+            </button>
+          </div>
+        )
+      }
+    ],
+    [activeVariants, products]
+  );
+
   return (
     <div className="product-catalog-container">
       {/* Toast Notification */}
@@ -589,10 +734,40 @@ export default function ProductCatalog() {
             </button>
           ))}
         </div>
+
+        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
+          <button
+            type="button"
+            className={`chip ${viewMode === 'table' ? 'active' : ''}`}
+            onClick={() => setViewMode('table')}
+            title="Standardized Table View"
+          >
+            ☰ Table View
+          </button>
+          <button
+            type="button"
+            className={`chip ${viewMode === 'grid' ? 'active' : ''}`}
+            onClick={() => setViewMode('grid')}
+            title="Grid Cards View"
+          >
+            ⊞ Card View
+          </button>
+        </div>
       </div>
 
-      {/* Products Grid */}
-      <div className="products-grid">
+      {/* Standardized DataTable or Card View */}
+      {viewMode === 'table' ? (
+        <DataTable
+          columns={productColumns}
+          data={filteredProducts}
+          loading={loading}
+          emptyMessage="No products match your search or category filter."
+          emptyIcon="📦"
+          pagination={true}
+          pageSize={10}
+        />
+      ) : (
+        <div className="products-grid">
         {filteredProducts.map((product) => {
           const selectedVariantId = activeVariants[product.id];
           const currentVariant =
@@ -723,6 +898,7 @@ export default function ProductCatalog() {
           );
         })}
       </div>
+    )}
 
       {/* MODAL 1: Create Product */}
       {isCreateModalOpen && (

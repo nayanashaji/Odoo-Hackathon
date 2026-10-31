@@ -122,7 +122,7 @@ const server = http.createServer((req, res) => {
     });
   }
 
-  const match = pathname.match(/^\/api\/quote-templates\/([^/]+)(\/(duplicate|preview-quote))?$/);
+  const match = pathname.match(/^\/api\/quote-templates\/([^/]+)(\/(duplicate|preview-quote|generate-quote|quotes))?$/);
   if (match) {
     const id = match[1];
     const subAction = match[3];
@@ -135,6 +135,13 @@ const server = http.createServer((req, res) => {
       return readBody((err, body) => {
         if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
         quoteCtrl.previewQuoteFromTemplate({ params: { id }, body }, expressRes);
+      });
+    }
+
+    if ((subAction === 'generate-quote' || subAction === 'quotes') && method === 'POST') {
+      return readBody((err, body) => {
+        if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
+        quoteCtrl.generateQuoteFromTemplate({ params: { id }, body }, expressRes);
       });
     }
 

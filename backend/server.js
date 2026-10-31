@@ -1,6 +1,7 @@
 
 const express = require("express");
 
+const invoiceRoutes = require("./src/routes/invoiceRoutes");
 const discountRoutes = require("./src/routes/discountRoutes");
 const paymentRoutes = require("./src/routes/paymentRoutes");
 
@@ -14,6 +15,7 @@ app.get("/", (req, res) => {
     });
 });
 
+app.use("/api/invoices", invoiceRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/payments", paymentRoutes);
 

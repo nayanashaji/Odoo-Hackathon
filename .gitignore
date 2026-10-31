@@ -38,3 +38,6 @@ pnpm-debug.log*
 # System files
 .DS_Store
 Thumbs.db
+.env
+*.log
+.DS_Store

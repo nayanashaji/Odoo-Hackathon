@@ -55,7 +55,8 @@ const VariantSchema = new mongoose.Schema(
  *   "id": "prod_1",
  *   "sales_price": 1200,
  *   "cost_price": 200,
- *   "variants": [{ "id": "var_1", "price_modifier": 560 }]
+ *   "variants": [{ "id": "var_1", "price_modifier": 560 }],
+ *   "plans": ["plan_1"]
  * }
  */
 const ProductSchema = new mongoose.Schema(
@@ -99,7 +100,15 @@ const ProductSchema = new mongoose.Schema(
       enum: ['active', 'archived', 'draft'],
       default: 'active'
     },
-    variants: [VariantSchema]
+    variants: [VariantSchema],
+    // Association: A Product can have multiple Plans associated with it
+    plans: [
+      {
+        type: String,
+        ref: 'Plan',
+        trim: true
+      }
+    ]
   },
   {
     timestamps: true,

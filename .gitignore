@@ -1,0 +1,34 @@
+# Package lockfiles
+package-lock.json
+**/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+**/.next/
+out/
+build/
+dist/
+
+# Next.js agent & temporary files
+AGENTS.md
+**/AGENTS.md
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env*.local
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs & caches
+.next/
+**/.next/
+dist/
+build/
+out/
+
+# Lock files
+package-lock.json
+**/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# System & logs
+.DS_Store
+Thumbs.db
+*.log
+

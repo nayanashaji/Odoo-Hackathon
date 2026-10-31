@@ -1,3 +1,4 @@
+
 const users = [
     {
         id: "usr_12345",
@@ -64,10 +65,25 @@ const subscriptions = [
 
 const invoices = [];
 
+const discounts = [
+    {
+        id: "disc_1",
+        type: "percentage",
+        value: 15,
+        usage_limit: 50,
+        applies_to: "subscription",
+        times_used: 0
+    }
+];
+
+const payments = [];
+
 module.exports = {
     users,
     products,
     plans,
     subscriptions,
-    invoices
+    invoices,
+    discounts,
+    payments
 };

@@ -1,12 +1,13 @@
 /**
  * Standalone API Server for Quotes & Subscriptions Domain
  * Runs using Node.js built-in HTTP module (Zero external dependencies required).
- * Also compatible with Express environments.
+ * Handles both Quote Templates and Subscription Lifecycle State Machine.
  */
 
 const http = require('http');
 const url = require('url');
-const ctrl = require('./controllers/quoteTemplateController');
+const subscriptionCtrl = require('./controllers/subscriptionStateController');
+const quoteCtrl = require('./controllers/quoteTemplateController');
 
 const PORT = process.env.PORT || 5000;
 
@@ -37,6 +38,7 @@ const server = http.createServer((req, res) => {
 
   // Helper response wrapper matching Express response interface
   const expressRes = {
+    _code: 200,
     status: function (code) {
       this._code = code;
       return this;
@@ -62,58 +64,92 @@ const server = http.createServer((req, res) => {
     });
   };
 
-  // API Route Dispatcher
+  // ==========================================
+  // SUBSCRIPTION STATE MACHINE ROUTES
+  // ==========================================
+  if (pathname === '/api/subscriptions/state-machine/definition' && method === 'GET') {
+    return subscriptionCtrl.getStateMachineDefinition(req, expressRes);
+  }
+
+  if (pathname === '/api/subscriptions' && method === 'GET') {
+    return subscriptionCtrl.getAllSubscriptions({ query: parsedUrl.query }, expressRes);
+  }
+
+  if (pathname === '/api/subscriptions' && method === 'POST') {
+    return readBody((err, body) => {
+      if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
+      subscriptionCtrl.createSubscription({ body }, expressRes);
+    });
+  }
+
+  const stateMatch = pathname.match(/^\/api\/subscriptions\/([^/]+)\/state$/);
+  if (stateMatch && method === 'PUT') {
+    const id = stateMatch[1];
+    return readBody((err, body) => {
+      if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
+      subscriptionCtrl.updateSubscriptionState({ params: { id }, body }, expressRes);
+    });
+  }
+
+  const getSubMatch = pathname.match(/^\/api\/subscriptions\/([^/]+)$/);
+  if (getSubMatch && method === 'GET') {
+    const id = getSubMatch[1];
+    return subscriptionCtrl.getSubscriptionById({ params: { id } }, expressRes);
+  }
+
+  // ==========================================
+  // QUOTE TEMPLATES ROUTES
+  // ==========================================
   if (pathname === '/api/quote-templates/mock-dependencies' && method === 'GET') {
-    return ctrl.getMockDependencies({ query: parsedUrl.query }, expressRes);
+    return quoteCtrl.getMockDependencies({ query: parsedUrl.query }, expressRes);
   }
 
   if (pathname === '/api/quote-templates/calculate-validity' && method === 'POST') {
     return readBody((err, body) => {
       if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
-      ctrl.calculateValidity({ body }, expressRes);
+      quoteCtrl.calculateValidity({ body }, expressRes);
     });
   }
 
   if (pathname === '/api/quote-templates' && method === 'GET') {
-    return ctrl.getQuoteTemplates({ query: parsedUrl.query }, expressRes);
+    return quoteCtrl.getQuoteTemplates({ query: parsedUrl.query }, expressRes);
   }
 
   if (pathname === '/api/quote-templates' && method === 'POST') {
     return readBody((err, body) => {
       if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
-      ctrl.createQuoteTemplate({ body }, expressRes);
+      quoteCtrl.createQuoteTemplate({ body }, expressRes);
     });
   }
 
-  // Parameterized routes: /api/quote-templates/:id, :id/duplicate, :id/preview-quote
   const match = pathname.match(/^\/api\/quote-templates\/([^/]+)(\/(duplicate|preview-quote))?$/);
   if (match) {
     const id = match[1];
     const subAction = match[3];
 
     if (subAction === 'duplicate' && method === 'POST') {
-      return ctrl.duplicateQuoteTemplate({ params: { id } }, expressRes);
+      return quoteCtrl.duplicateQuoteTemplate({ params: { id }, expressRes });
     }
 
     if (subAction === 'preview-quote' && method === 'POST') {
       return readBody((err, body) => {
         if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
-        ctrl.previewQuoteFromTemplate({ params: { id }, body }, expressRes);
+        quoteCtrl.previewQuoteFromTemplate({ params: { id }, body }, expressRes);
       });
     }
 
     if (!subAction) {
       if (method === 'GET') {
-        return ctrl.getQuoteTemplateById({ params: { id } }, expressRes);
+        return quoteCtrl.getQuoteTemplateById({ params: { id } }, expressRes);
       }
       if (method === 'PUT') {
         return readBody((err, body) => {
           if (err) return expressRes.status(400).json({ success: false, error: 'Invalid JSON body' });
-          ctrl.updateQuoteTemplate({ params: { id }, body }, expressRes);
+          quoteCtrl.updateQuoteTemplate({ params: { id }, body }, expressRes);
         });
       }
       if (method === 'DELETE') {
-        return ctrl.deleteQuoteTemplate({ params: { id } }, expressRes);
+        return quoteCtrl.deleteQuoteTemplate({ params: { id } }, expressRes);
       }
     }
   }
@@ -128,14 +164,12 @@ const server = http.createServer((req, res) => {
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`\n============================================================`);
-    console.log(`🚀 Quotes & Subscriptions Domain API Server Running`);
-    console.log(`📍 Endpoint: http://localhost:${PORT}/api/quote-templates`);
-    console.log(`📦 Mock Auth User: usr_123 (Claire Dupont)`);
-    console.log(`📦 Mock Product Variant: prod_1 (Enterprise Cloud Server) / var_1 (+$560)`);
-    console.log(`⏱️  Quotation Validity Engine: Active`);
+    console.log(`🚀 API Server Running on Port ${PORT}`);
+    console.log(`📍 Subscriptions Endpoint: http://localhost:${PORT}/api/subscriptions`);
+    console.log(`📍 Quote Templates Endpoint: http://localhost:${PORT}/api/quote-templates`);
+    console.log(`📦 State Flow: Draft → Quotation → Confirmed → Active → Closed`);
     console.log(`============================================================\n`);
   });
 }
 
 module.exports = server;
-
